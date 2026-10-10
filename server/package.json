@@ -1,0 +1,22 @@
+{
+  "name": "khitmah-server",
+  "version": "1.0.0",
+  "description": "Khitmah - Community Quran Completion Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node --dns-result-order=ipv4first src/index.js",
+    "dev": "node --dns-result-order=ipv4first --watch src/index.js",
+    "seed": "node --dns-result-order=ipv4first src/seed.js",
+    "test": "node --dns-result-order=ipv4first test/api.test.js"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "ws": "^8.18.0"
+  }
+}

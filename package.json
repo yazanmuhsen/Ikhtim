@@ -1,0 +1,24 @@
+{
+  "name": "khitmah",
+  "version": "1.0.0",
+  "description": "Khitmah (ختمة) - Community Quran Completion Full-Stack Application",
+  "scripts": {
+    "start": "npm --prefix server start",
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "client": "npm --prefix client dev",
+    "build": "npm --prefix client run build",
+    "test": "npm --prefix server test",
+    "seed": "npm --prefix server run seed"
+  },
+  "keywords": [
+    "quran",
+    "khitmah",
+    "react",
+    "express",
+    "postgresql",
+    "islamic-app"
+  ],
+  "author": "",
+  "license": "MIT"
+}

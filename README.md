@@ -1,4 +1,4 @@
-# Khitmah (خَتْمَة) 📖✨
+# Ikhtim 📖✨
 ### Collaborative Community Quran Completion Platform | مشروع الختمة الجماعية للقرآن الكريم
 
 **Khitmah** is a lightweight, responsive full-stack web application designed for communities to collaboratively recite and complete the Holy Quran together without sign-ups or accounts.

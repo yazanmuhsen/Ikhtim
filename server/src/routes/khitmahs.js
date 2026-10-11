@@ -73,10 +73,7 @@ async function checkCooldown(deviceId, ip) {
     queryParams.push(deviceId);
     queryConditions.push(`device_id = $${queryParams.length}`);
   }
-  if (ip) {
-    queryParams.push(ip);
-    queryConditions.push(`ip_address = $${queryParams.length}`);
-  }
+  
 
   const sql = `
     SELECT last_read_at, EXTRACT(EPOCH FROM (NOW() - last_read_at)) AS elapsed_seconds

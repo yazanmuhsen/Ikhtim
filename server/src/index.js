@@ -85,10 +85,19 @@ process.on('SIGTERM', () => {
 });
 
 if (require.main === module) {
-  startServer().catch((err) => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-  });
+  startServer()
+    .then(async () => {
+      // Warm the Quran cache in the background so readers don't wait
+      const { getJuzPages } = require('./quranService');
+      for (let i = 1; i <= 30; i++) {
+        try { await getJuzPages(i); } catch (e) { console.warn(`Cache warm failed for Juz ${i}:`, e.message); }
+      }
+      console.log('Quran cache warmed for all 30 juz.');
+    })
+    .catch((err) => {
+      console.error('Failed to start server:', err);
+      process.exit(1);
+    });
 }
 
 module.exports = { app, server, startServer, stopServer };

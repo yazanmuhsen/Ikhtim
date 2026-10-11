@@ -34,7 +34,7 @@ function getClientIdentifier(req) {
 
 // Helper to check cooldown for a device or IP
 async function checkCooldown(deviceId, ip) {
-  if (!deviceId && !ip) {
+  if   if (!deviceId) {
     return { active: false, remainingSeconds: 0 };
   }
 

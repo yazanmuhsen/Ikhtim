@@ -62,7 +62,7 @@ function getClientIdentifier(req) {
 }
 
 async function checkCooldown(deviceId, ip) {
-  if (!deviceId && !ip) {
+  if (!deviceId) {
     return { active: false, remainingSeconds: 0 };
   }
 

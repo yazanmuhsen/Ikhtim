@@ -93,7 +93,11 @@ const resources = {
       goHome: 'العودة للصفحة الرئيسية',
       nameRequired: 'اسم المتوفى مطلوب',
       nameTooLong: 'الاسم يجب ألا يتجاوز ٨٠ حرفاً',
-      dedicationTooLong: 'الإهداء يجب ألا يتجاوز ٣٠٠ حرف'
+      dedicationTooLong: 'الإهداء يجب ألا يتجاوز ٣٠٠ حرف',
+      createFailed: 'تعذر إنشاء الختمة. حاول مرة أخرى.',
+      deleteFailed: 'تعذر حذف الختمة.',
+      copyFailed: 'تعذر نسخ الرابط',
+      whatsAppShareText: 'ختمة قرآن صدقة جارية عن روح {{name}}'
     }
   },
   en: {
@@ -187,7 +191,11 @@ const resources = {
       goHome: 'Go to Home Page',
       nameRequired: 'Name of the deceased is required',
       nameTooLong: 'Name must be 80 characters or fewer',
-      dedicationTooLong: 'Dedication must be 300 characters or fewer'
+      dedicationTooLong: 'Dedication must be 300 characters or fewer',
+      createFailed: 'Could not create the Khitmah. Please try again.',
+      deleteFailed: 'Could not delete the Khitmah.',
+      copyFailed: 'Could not copy the link',
+      whatsAppShareText: 'Quran Khitmah in memory of {{name}}'
     }
   }
 };

@@ -26,7 +26,8 @@ async function getClient() {
   } else {
     if (!pglite) {
       const { PGlite } = require('@electric-sql/pglite');
-      const dataDir = path.join(__dirname, '../data/pgdata');
+      const overrideDir = (process.env.PGLITE_DATA_DIR || '').trim();
+      const dataDir = overrideDir || path.join(__dirname, '../data/pgdata');
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
       }
@@ -139,8 +140,28 @@ async function initDb() {
   }
 }
 
+async function closeDb() {
+  if (pglite) {
+    try {
+      await pglite.close();
+    } catch (e) {
+      // ignore close errors during test cleanup
+    }
+    pglite = null;
+  }
+  if (pool) {
+    try {
+      await pool.end();
+    } catch (e) {
+      // ignore
+    }
+    pool = null;
+  }
+}
+
 module.exports = {
   query,
   transaction,
-  initDb
+  initDb,
+  closeDb
 };

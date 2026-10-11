@@ -1,15 +1,45 @@
-const assert = require('assert');
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const net = require('net');
 const http = require('http');
-const { app } = require('../src/index');
+const assert = require('assert');
+const WebSocket = require('ws');
 
-const PORT = 5098;
-let serverInstance;
+if (process.env.DATABASE_URL && String(process.env.DATABASE_URL).trim() !== '') {
+  console.error('ABORT: Tests refuse to run when DATABASE_URL is set. Use embedded PGlite only.');
+  process.exit(1);
+}
 
-function makeRequest(method, path, body = null, deviceId = null, clientIp = null) {
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'khitmah-test-'));
+process.env.DATABASE_URL = '';
+process.env.PGLITE_DATA_DIR = tmpDir;
+process.env.ADMIN_TOKEN = '';
+
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+let PORT;
+let startServer;
+let stopServer;
+
+function makeRequest(method, reqPath, body = null, deviceId = null, clientIp = null, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const dataString = body ? JSON.stringify(body) : null;
     const headers = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...extraHeaders
     };
     if (dataString) {
       headers['Content-Length'] = Buffer.byteLength(dataString);
@@ -23,9 +53,9 @@ function makeRequest(method, path, body = null, deviceId = null, clientIp = null
 
     const req = http.request(
       {
-        hostname: 'localhost',
+        hostname: '127.0.0.1',
         port: PORT,
-        path,
+        path: reqPath,
         method,
         headers
       },
@@ -40,7 +70,7 @@ function makeRequest(method, path, body = null, deviceId = null, clientIp = null
           } catch (e) {
             json = raw;
           }
-          resolve({ status: res.statusCode, data: json });
+          resolve({ status: res.statusCode, data: json, raw, headers: res.headers });
         });
       }
     );
@@ -53,19 +83,86 @@ function makeRequest(method, path, body = null, deviceId = null, clientIp = null
   });
 }
 
-async function runTests() {
-  console.log('🚀 Starting Refactored Khitmah API Tests (No Auth, Cooldown & Read button)...\n');
+function assertNoLeakedFields(payload) {
+  const encoded = JSON.stringify(payload);
+  assert.ok(!encoded.includes('creator_device_id'));
+  assert.ok(!encoded.includes('creator_ip'));
+  assert.ok(!encoded.includes('manage_token_hash'));
+  assert.ok(!/token_hash/i.test(encoded));
+}
 
-  serverInstance = app.listen(PORT);
-  await new Promise(r => setTimeout(r, 500));
+async function createKhitmah(personName, dedication, deviceId, ip) {
+  return makeRequest('POST', '/api/k', { personName, dedication }, deviceId, ip);
+}
+
+async function completeAllCustomJuz(slug, ipBase) {
+  let last = null;
+  for (let j = 1; j <= 30; j++) {
+    const dev = `custom-finisher-${slug}-${j}-${Date.now()}-${Math.random()}`;
+    const ip = `${ipBase}.${j}`;
+    last = await makeRequest('POST', `/api/k/${slug}/juz/${j}/read`, {}, dev, ip);
+    assert.strictEqual(last.status, 200, `expected 200 completing juz ${j} of ${slug}, got ${last.status} ${JSON.stringify(last.data)}`);
+  }
+  return last;
+}
+
+function connectBoardListener(timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
+    const message = new Promise((res, rej) => {
+      const timer = setTimeout(() => {
+        ws.terminate();
+        rej(new Error('Timed out waiting for BOARD_UPDATE'));
+      }, timeoutMs);
+      ws.on('message', (raw) => {
+        try {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === 'BOARD_UPDATE') {
+            clearTimeout(timer);
+            ws.close();
+            res(msg);
+          }
+        } catch (e) {
+          // ignore
+        }
+      });
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        rej(err);
+      });
+    });
+    ws.on('open', () => resolve({ message }));
+    ws.on('error', reject);
+  });
+}
+
+async function cleanup() {
+  try {
+    if (stopServer) await stopServer();
+  } catch (e) {
+    // ignore
+  }
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 8, retryDelay: 150 });
+  } catch (e) {
+    console.warn('Could not delete temp test database folder:', e.message);
+  }
+}
+
+async function runTests() {
+  PORT = await getFreePort();
+  process.env.PORT = String(PORT);
+
+  ({ startServer, stopServer } = require('../src/index'));
+  await startServer();
+
+  console.log(`🚀 Starting Khitmah API tests on port ${PORT} (throwaway PGlite)...\n`);
 
   try {
-    // 1. Health check
     const health = await makeRequest('GET', '/api/health');
     assert.strictEqual(health.status, 200);
     console.log('✅ 1. Health check passed');
 
-    // 2. Fetch initial Juz list (no auth needed)
     const device1 = 'test-device-uuid-1';
     const ip1 = '192.168.1.101';
     const initialList = await makeRequest('GET', '/api/juz', null, device1, ip1);
@@ -74,33 +171,29 @@ async function runTests() {
     assert.strictEqual(initialList.data.cooldown.active, false);
     console.log('✅ 2. Loaded 30 Juz cards, cooldown inactive for device 1');
 
-    // 3. Mark Juz 1 as Read by device 1
     const read1 = await makeRequest('POST', '/api/juz/1/read', {}, device1, ip1);
     assert.strictEqual(read1.status, 200);
     assert.ok(read1.data.remainingSeconds > 0);
     console.log('✅ 3. Device 1 successfully read Juz 1, entered 45-minute cooldown');
 
-    // 4. Device 1 attempts to read Juz 2 immediately -> should be blocked by cooldown (429)
     const read2Blocked = await makeRequest('POST', '/api/juz/2/read', {}, device1, ip1);
     assert.strictEqual(read2Blocked.status, 429);
     assert.strictEqual(read2Blocked.data.error, 'cooldown_active');
     console.log('✅ 4. Cooldown enforced: Device 1 blocked with 429 from reading before 45 minutes');
 
-    // 5. Another device with DIFFERENT IP attempts to read Juz 1 (already completed) -> should be rejected with 409
     const device2 = 'test-device-uuid-2';
     const ip2 = '192.168.1.102';
     const conflictRead = await makeRequest('POST', '/api/juz/1/read', {}, device2, ip2);
     assert.strictEqual(conflictRead.status, 409);
     console.log('✅ 5. Conditional update enforced: Device 2 blocked with 409 (already completed)');
 
-    // 6. Test Quran pages strictly for Juz 1
     const pages1 = await makeRequest('GET', '/api/juz/1/pages');
     assert.strictEqual(pages1.status, 200);
     assert.strictEqual(pages1.data.juzNumber, 1);
+    assert.ok(Array.isArray(pages1.data.pages));
     assert.strictEqual(pages1.data.pages.length, 21);
     console.log('✅ 6. Scoped Quran pages verified: Juz 1 has 21 pages (1-21)');
 
-    // 7. Verify atomic Khitmah reset when all 30 completed
     console.log('⏳ Simulating completion of remaining 29 juz with unique devices and IPs...');
     for (let j = 2; j <= 30; j++) {
       const dev = `device-sim-${j}-${Date.now()}`;
@@ -113,20 +206,227 @@ async function runTests() {
       }
     }
 
-    // Verify board reset
     const afterReset = await makeRequest('GET', '/api/juz');
     assert.strictEqual(afterReset.data.counter.currentProgress, 0);
     assert.strictEqual(afterReset.data.counter.availableCount, 30);
     console.log('✅ 8. Post-reset verified: all 30 Juz back to Available, progress 0/30');
 
+    const mainSnapshot = await makeRequest('GET', '/api/juz');
+    const mainTotal = mainSnapshot.data.counter.totalCompleted;
+    const mainProgress = mainSnapshot.data.counter.currentProgress;
+
+    const missingDevice = await makeRequest('POST', '/api/k', { personName: 'Test Person' }, null, '203.0.113.10');
+    assert.strictEqual(missingDevice.status, 400);
+    console.log('✅ 9. POST /api/k without x-device-id returns 400');
+
+    const emptyName = await createKhitmah('   ', '', 'dev-create-1', '198.51.100.1');
+    assert.strictEqual(emptyName.status, 400);
+
+    const longName = await createKhitmah('x'.repeat(81), '', 'dev-create-1', '198.51.100.1');
+    assert.strictEqual(longName.status, 400);
+
+    const longDed = await createKhitmah('Valid Name', 'd'.repeat(301), 'dev-create-1', '198.51.100.1');
+    assert.strictEqual(longDed.status, 400);
+    console.log('✅ 10. Create validation rejects empty name and over-length fields');
+
+    const tagged = await createKhitmah('<b>Ali</b>', '<script>x</script>dua', 'dev-create-1', '198.51.100.1');
+    assert.strictEqual(tagged.status, 201);
+    assert.ok(tagged.data.slug);
+    assert.ok(tagged.data.manageToken);
+    assert.ok(tagged.data.manageToken.length >= 24);
+    assert.strictEqual(tagged.data.slug.length, 8);
+    assert.match(tagged.data.slug, /^[a-z0-9]{8}$/);
+
+    const taggedBoard = await makeRequest('GET', `/api/k/${tagged.data.slug}`, null, 'dev-create-1', '198.51.100.1');
+    assert.strictEqual(taggedBoard.status, 200);
+    assert.strictEqual(taggedBoard.data.personName, 'Ali');
+    assert.strictEqual(taggedBoard.data.dedication, 'xdua');
+    assert.strictEqual(taggedBoard.data.juzList.length, 30);
+    assert.strictEqual(taggedBoard.data.counter.totalCompleted, 0);
+    assert.strictEqual(taggedBoard.data.counter.currentProgress, 0);
+    assert.strictEqual(taggedBoard.data.counter.availableCount, 30);
+    assert.strictEqual(taggedBoard.data.counter.totalJuz, 30);
+    assert.ok(taggedBoard.data.cooldown);
+    assert.ok(taggedBoard.data.serverTime);
+    assertNoLeakedFields(taggedBoard.data);
+    console.log('✅ 11. Create strips tags, returns token once, GET board shape matches /api/juz plus person fields');
+
+    const unknown = await makeRequest('GET', '/api/k/zzzzzzzz');
+    assert.strictEqual(unknown.status, 404);
+    const unknownRead = await makeRequest('POST', '/api/k/zzzzzzzz/juz/1/read', {}, 'dev-404', '198.51.100.9');
+    assert.strictEqual(unknownRead.status, 404);
+    console.log('✅ 12. Unknown slug returns 404');
+
+    const rateDevice = `rate-device-${Date.now()}`;
+    const rateIp = '203.0.113.50';
+    for (let i = 0; i < 5; i++) {
+      const res = await createKhitmah(`Person ${i}`, '', rateDevice, rateIp);
+      assert.strictEqual(res.status, 201, `create ${i} should succeed`);
+    }
+    const sixth = await createKhitmah('Person six', '', rateDevice, rateIp);
+    assert.strictEqual(sixth.status, 429);
+    console.log('✅ 13. Device rate limit: 6th create in 24h returns 429');
+
+    const ipLimit = '203.0.113.77';
+    for (let i = 0; i < 20; i++) {
+      const res = await createKhitmah(`Ip Person ${i}`, '', `ip-limit-dev-${i}-${Date.now()}`, ipLimit);
+      assert.strictEqual(res.status, 201, `IP create ${i} should succeed, got ${res.status}`);
+    }
+    const ip21 = await createKhitmah('Ip Person 21', '', `ip-limit-dev-21-${Date.now()}`, ipLimit);
+    assert.strictEqual(ip21.status, 429);
+    console.log('✅ 14. IP rate limit: 21st create from same IP returns 429');
+
+    const readCustom = await createKhitmah('Reader One', 'dedication here', 'dev-reader-owner', '198.51.100.20');
+    assert.strictEqual(readCustom.status, 201);
+    const slugR = readCustom.data.slug;
+    const readerDev = `custom-reader-${Date.now()}`;
+    const readerIp = '198.51.100.21';
+
+    const customRead = await makeRequest('POST', `/api/k/${slugR}/juz/3/read`, {}, readerDev, readerIp);
+    assert.strictEqual(customRead.status, 200);
+    assert.ok(customRead.data.remainingSeconds > 0);
+
+    const customCooldown = await makeRequest('POST', `/api/k/${slugR}/juz/4/read`, {}, readerDev, readerIp);
+    assert.strictEqual(customCooldown.status, 429);
+    assert.strictEqual(customCooldown.data.error, 'cooldown_active');
+
+    const otherDev = `custom-other-${Date.now()}`;
+    const duplicate = await makeRequest('POST', `/api/k/${slugR}/juz/3/read`, {}, otherDev, '198.51.100.22');
+    assert.strictEqual(duplicate.status, 409);
+    console.log('✅ 15. Custom read, 45-minute cooldown, and 409 on double-complete');
+
+    const isoA = await createKhitmah('Khitmah A', '', `iso-owner-a-${Date.now()}`, '198.51.100.30');
+    const isoB = await createKhitmah('Khitmah B', '', `iso-owner-b-${Date.now()}`, '198.51.100.31');
+    assert.strictEqual(isoA.status, 201);
+    assert.strictEqual(isoB.status, 201);
+
+    const finishA = await completeAllCustomJuz(isoA.data.slug, '10.10.1');
+    assert.strictEqual(finishA.data.khitmahFinished, true);
+    assert.strictEqual(finishA.data.totalCompletedKhitmahs, 1);
+
+    const boardA = await makeRequest('GET', `/api/k/${isoA.data.slug}`);
+    const boardB = await makeRequest('GET', `/api/k/${isoB.data.slug}`);
+    assert.strictEqual(boardA.data.counter.totalCompleted, 1);
+    assert.strictEqual(boardA.data.counter.currentProgress, 0);
+    assert.strictEqual(boardA.data.counter.availableCount, 30);
+    assert.strictEqual(boardB.data.counter.totalCompleted, 0);
+    assert.strictEqual(boardB.data.counter.currentProgress, 0);
+    assert.ok(boardB.data.juzList.every(j => j.status === 'available'));
+
+    const finishB = await completeAllCustomJuz(isoB.data.slug, '10.10.2');
+    assert.strictEqual(finishB.data.khitmahFinished, true);
+    assert.strictEqual(finishB.data.totalCompletedKhitmahs, 1);
+
+    const boardA2 = await makeRequest('GET', `/api/k/${isoA.data.slug}`);
+    const boardB2 = await makeRequest('GET', `/api/k/${isoB.data.slug}`);
+    assert.strictEqual(boardA2.data.counter.totalCompleted, 1);
+    assert.strictEqual(boardB2.data.counter.totalCompleted, 1);
+    console.log('✅ 16. 30/30 reset increments only that khitmah; two khitmahs stay isolated');
+
+    const delRight = await createKhitmah('Delete Me', '', `del-owner-1-${Date.now()}`, '198.51.100.40');
+    const delOk = await makeRequest('DELETE', `/api/k/${delRight.data.slug}`, null, null, null, {
+      'x-manage-token': delRight.data.manageToken
+    });
+    assert.strictEqual(delOk.status, 200);
+    const gone = await makeRequest('GET', `/api/k/${delRight.data.slug}`);
+    assert.strictEqual(gone.status, 404);
+
+    const delWrong = await createKhitmah('Delete Wrong', '', `del-owner-2-${Date.now()}`, '198.51.100.41');
+    const wrong = await makeRequest('DELETE', `/api/k/${delWrong.data.slug}`, null, null, null, {
+      'x-manage-token': 'this-is-not-the-manage-token-xx'
+    });
+    assert.strictEqual(wrong.status, 403);
+
+    const noTok = await makeRequest('DELETE', `/api/k/${delWrong.data.slug}`);
+    assert.strictEqual(noTok.status, 403);
+
+    process.env.ADMIN_TOKEN = 'test-admin-token-value';
+    const delAdmin = await createKhitmah('Delete Admin', '', `del-owner-3-${Date.now()}`, '198.51.100.42');
+    const emptyAdminHeader = await makeRequest('DELETE', `/api/k/${delAdmin.data.slug}`, null, null, null, {
+      'x-admin-token': ''
+    });
+    assert.strictEqual(emptyAdminHeader.status, 403);
+    const adminOk = await makeRequest('DELETE', `/api/k/${delAdmin.data.slug}`, null, null, null, {
+      'x-admin-token': 'test-admin-token-value'
+    });
+    assert.strictEqual(adminOk.status, 200);
+
+    process.env.ADMIN_TOKEN = '';
+    const delNoAdmin = await createKhitmah('Delete No Admin', '', `del-owner-4-${Date.now()}`, '198.51.100.43');
+    const adminDisabled = await makeRequest('DELETE', `/api/k/${delNoAdmin.data.slug}`, null, null, null, {
+      'x-admin-token': 'test-admin-token-value'
+    });
+    assert.strictEqual(adminDisabled.status, 403);
+    const emptyBoth = await makeRequest('DELETE', `/api/k/${delNoAdmin.data.slug}`, null, null, null, {
+      'x-admin-token': ''
+    });
+    assert.strictEqual(emptyBoth.status, 403);
+    console.log('✅ 17. Delete: right token, wrong token, no token, admin set/unset');
+
+    const mainAfter = await makeRequest('GET', '/api/juz');
+    assert.strictEqual(mainAfter.status, 200);
+    assert.strictEqual(mainAfter.data.juzList.length, 30);
+    assert.strictEqual(mainAfter.data.counter.totalCompleted, mainTotal);
+    assert.strictEqual(mainAfter.data.counter.currentProgress, mainProgress);
+    assert.ok(!('personName' in mainAfter.data) || mainAfter.data.personName === undefined);
+    console.log('✅ 18. Main /api/juz board unchanged after custom khitmah activity');
+
+    const wsCustom = await createKhitmah('WS Custom', '', `ws-owner-${Date.now()}`, '198.51.100.60');
+    const customListener = await connectBoardListener();
+    const wsReadCustom = await makeRequest(
+      'POST',
+      `/api/k/${wsCustom.data.slug}/juz/7/read`,
+      {},
+      `ws-custom-reader-${Date.now()}`,
+      '198.51.100.61'
+    );
+    assert.strictEqual(wsReadCustom.status, 200);
+    const customMsg = await customListener.message;
+    assert.strictEqual(customMsg.data.slug, wsCustom.data.slug);
+    console.log('✅ 19. Custom WebSocket BOARD_UPDATE includes slug');
+
+    const mainListener = await connectBoardListener();
+    const wsReadMain = await makeRequest(
+      'POST',
+      '/api/juz/5/read',
+      {},
+      `ws-main-reader-${Date.now()}`,
+      '198.51.100.62'
+    );
+    assert.strictEqual(wsReadMain.status, 200);
+    const mainMsg = await mainListener.message;
+    assert.ok(!mainMsg.data.slug);
+    console.log('✅ 20. Main WebSocket BOARD_UPDATE does not include slug');
+
+    const spaNew = await makeRequest('GET', '/new');
+    const spaCustom = await makeRequest('GET', '/k/x');
+    const spaLooksLikeIndex = (res) =>
+      res.status === 200 &&
+      typeof res.raw === 'string' &&
+      res.raw.includes('<div id="root">') &&
+      /index\.html|root|Khitmah|خَتْمَة/i.test(res.raw);
+
+    if (spaLooksLikeIndex(spaNew) && spaLooksLikeIndex(spaCustom)) {
+      console.log('✅ 21. SPA fallback returns index.html for /new and /k/x');
+    } else {
+      throw new Error(
+        `SPA fallback missing index.html (GET /new status=${spaNew.status}, GET /k/x status=${spaCustom.status}). Build the client first.`
+      );
+    }
+
     console.log('\n🌟 ALL TESTS PASSED SUCCESSFULLY! 🌟\n');
-    process.exit(0);
   } catch (err) {
     console.error('❌ Test failed:', err);
+    await cleanup();
     process.exit(1);
-  } finally {
-    if (serverInstance) serverInstance.close();
   }
+
+  await cleanup();
+  process.exit(0);
 }
 
-runTests();
+runTests().catch(async (err) => {
+  console.error('❌ Test runner failed:', err);
+  await cleanup();
+  process.exit(1);
+});

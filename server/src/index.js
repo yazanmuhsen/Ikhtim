@@ -8,7 +8,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 dotenv.config();
 
-const { initDb } = require('./db');
+const { initDb, closeDb } = require('./db');
 const { setupWebSocket } = require('./websocket');
 const { router: juzRoutes } = require('./routes/juz');
 const { router: khitmahRoutes } = require('./routes/khitmahs');
@@ -57,19 +57,26 @@ if (fs.existsSync(clientDist)) {
 // Setup WebSockets
 setupWebSocket(server);
 
-const PORT = process.env.PORT || 5000;
-
 async function startServer() {
-  try {
-    await initDb();
-    server.listen(PORT, () => {
-      console.log(`🌟 Khitmah Backend running on http://localhost:${PORT}`);
-      console.log(`📡 WebSocket server ready at ws://localhost:${PORT}/ws`);
+  await initDb();
+  const port = Number(process.env.PORT) || 5000;
+  await new Promise((resolve, reject) => {
+    const onError = (err) => reject(err);
+    server.once('error', onError);
+    server.listen(port, () => {
+      server.removeListener('error', onError);
+      console.log(`🌟 Khitmah Backend running on http://localhost:${port}`);
+      console.log(`📡 WebSocket server ready at ws://localhost:${port}/ws`);
+      resolve();
     });
-  } catch (err) {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-  }
+  });
+}
+
+async function stopServer() {
+  await new Promise((resolve) => {
+    server.close(() => resolve());
+  });
+  await closeDb();
 }
 
 // Graceful cleanup on exit
@@ -77,6 +84,11 @@ process.on('SIGTERM', () => {
   server.close();
 });
 
-startServer();
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
 
-module.exports = { app, server };
+module.exports = { app, server, startServer, stopServer };

@@ -30,7 +30,12 @@ export default function Dashboard({
   cooldownRemaining = 0,
   onOpenReader,
   personName,
-  dedication
+  dedication,
+  apiBase: _apiBase,
+  showCreateButton = false,
+  onCreateClick,
+  canManage = false,
+  onDelete
 }) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -50,7 +55,31 @@ export default function Dashboard({
     <div className="space-y-6 sm:space-y-8 pb-16">
       
       {/* Dedication Banner directly under the navbar */}
-      <DedicationBanner />
+      <DedicationBanner personName={personName} dedication={dedication} />
+
+      {showCreateButton && (
+        <div className="flex justify-center -mt-2">
+          <button
+            type="button"
+            onClick={onCreateClick}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl text-khitmah-800 dark:text-khitmah-200 bg-khitmah-50 dark:bg-khitmah-950/40 border border-khitmah-200/80 dark:border-khitmah-800 hover:bg-khitmah-100 dark:hover:bg-khitmah-900/50 transition-colors"
+          >
+            {t('createKhitmah')}
+          </button>
+        </div>
+      )}
+
+      {canManage && onDelete && (
+        <div className="flex justify-center -mt-2">
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl text-rose-800 dark:text-rose-200 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+          >
+            {t('deleteKhitmah')}
+          </button>
+        </div>
+      )}
 
       {/* Hero & Statistics Section */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-khitmah-900 via-khitmah-800 to-khitmah-950 text-white p-6 sm:p-8 md:p-10 shadow-xl border border-khitmah-700/50">

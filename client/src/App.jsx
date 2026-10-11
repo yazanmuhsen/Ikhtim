@@ -5,17 +5,65 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import QuranReader from './components/QuranReader';
 import Footer from './components/Footer';
+import CreateKhitmah from './components/CreateKhitmah';
+import { manageStorageKey } from './utils/manageToken';
 import { getOrCreateDeviceId } from './utils/deviceId';
 import confetti from 'canvas-confetti';
-import { Sparkles, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Sparkles, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-function KhitmahApp() {
-  const { t, i18n } = useTranslation();
+function parsePath(pathname) {
+  const path = (pathname || '/').replace(/\/+$/, '') || '/';
+  if (path === '/new') return { name: 'new' };
+  const match = path.match(/^\/k\/([^/]+)$/);
+  if (match) return { name: 'custom', slug: match[1] };
+  return { name: 'home' };
+}
 
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'reader'
+function getManageToken(slug) {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('manage');
+  if (fromQuery) {
+    localStorage.setItem(manageStorageKey(slug), fromQuery);
+    return fromQuery;
+  }
+  return localStorage.getItem(manageStorageKey(slug));
+}
+
+function setRobotsNoindex(enabled) {
+  let meta = document.querySelector('meta[name="robots"]');
+  if (enabled) {
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'robots');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', 'noindex');
+  } else if (meta) {
+    meta.remove();
+  }
+}
+
+function AppShell({ children, isWsConnected, onGoHome }) {
+  return (
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans transition-colors duration-200">
+      <Navbar isWsConnected={isWsConnected} onGoHome={onGoHome} />
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {children}
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function KhitmahApp({ route, navigate }) {
+  const { t } = useTranslation();
+  const isCustom = route.name === 'custom';
+  const apiBase = isCustom ? `/api/k/${route.slug}` : '/api/juz';
+  const currentSlug = isCustom ? route.slug : null;
+
+  const [activeView, setActiveView] = useState('dashboard');
   const [selectedJuz, setSelectedJuz] = useState(null);
 
-  // Board state
   const [juzList, setJuzList] = useState([]);
   const [counter, setCounter] = useState({
     totalCompleted: 0,
@@ -23,17 +71,30 @@ function KhitmahApp() {
     availableCount: 30,
     totalJuz: 30
   });
+  const [personName, setPersonName] = useState('');
+  const [dedication, setDedication] = useState('');
+  const [notFound, setNotFound] = useState(false);
+  const [boardLoading, setBoardLoading] = useState(isCustom);
 
-  // Cooldown countdown state in seconds
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
-
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [khitmahCelebration, setKhitmahCelebration] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const wsRef = useRef(null);
+  const manageToken = isCustom ? getManageToken(route.slug) : null;
 
-  // 1-second interval to tick down cooldown timer locally
+  useEffect(() => {
+    setActiveView('dashboard');
+    setSelectedJuz(null);
+    setNotFound(false);
+    setPersonName('');
+    setDedication('');
+    setBoardLoading(isCustom);
+  }, [apiBase, isCustom]);
+
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
     const timer = setInterval(() => {
@@ -42,17 +103,22 @@ function KhitmahApp() {
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  // Fetch Board Data
   const fetchBoardData = useCallback(async () => {
     try {
       const deviceId = getOrCreateDeviceId();
-      const res = await fetch(`/api/juz?device_id=${encodeURIComponent(deviceId)}`, {
+      const res = await fetch(`${apiBase}?device_id=${encodeURIComponent(deviceId)}`, {
         headers: {
           'x-device-id': deviceId
         }
       });
+      if (res.status === 404 && isCustom) {
+        setNotFound(true);
+        setBoardLoading(false);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
+        setNotFound(false);
         setJuzList(data.juzList || []);
         if (data.counter) {
           setCounter(data.counter);
@@ -60,24 +126,27 @@ function KhitmahApp() {
         if (data.cooldown) {
           setCooldownRemaining(data.cooldown.remainingSeconds || 0);
         }
-
-        // If currently in reader, update selectedJuz with newest status
-        if (selectedJuz) {
-          const updated = data.juzList?.find(j => j.juz_number === selectedJuz.juz_number);
-          if (updated) setSelectedJuz(updated);
+        if (isCustom) {
+          setPersonName(data.personName || '');
+          setDedication(data.dedication || '');
         }
+        setSelectedJuz(prev => {
+          if (!prev) return prev;
+          const updated = data.juzList?.find(j => j.juz_number === prev.juz_number);
+          return updated || prev;
+        });
       }
     } catch (err) {
       console.warn('Failed to fetch board data:', err.message);
+    } finally {
+      setBoardLoading(false);
     }
-  }, [selectedJuz]);
+  }, [apiBase, isCustom]);
 
-  // Initial load
   useEffect(() => {
     fetchBoardData();
-  }, []);
+  }, [fetchBoardData]);
 
-  // Polling fallback every 10 seconds
   useEffect(() => {
     const pollInterval = setInterval(() => {
       fetchBoardData();
@@ -85,7 +154,6 @@ function KhitmahApp() {
     return () => clearInterval(pollInterval);
   }, [fetchBoardData]);
 
-  // WebSocket Connection
   useEffect(() => {
     let ws = null;
     let reconnectTimeout = null;
@@ -106,9 +174,14 @@ function KhitmahApp() {
           try {
             const message = JSON.parse(event.data);
             if (message.type === 'BOARD_UPDATE') {
+              const msgSlug = message.data?.slug;
+              if (currentSlug) {
+                if (msgSlug !== currentSlug) return;
+              } else if (msgSlug) {
+                return;
+              }
               fetchBoardData();
               if (message.data?.action === 'KHITMAH_RESET' || message.data?.khitmahFinished) {
-                // Celebrate Khitmah completion!
                 setKhitmahCelebration(true);
                 confetti({
                   particleCount: 200,
@@ -117,7 +190,7 @@ function KhitmahApp() {
                 });
               }
             }
-          } catch (e) {
+          } catch {
             // non-json
           }
         };
@@ -130,7 +203,7 @@ function KhitmahApp() {
         ws.onerror = () => {
           setIsWsConnected(false);
         };
-      } catch (e) {
+      } catch {
         console.warn('WebSocket init failed, using polling fallback');
       }
     }
@@ -141,7 +214,7 @@ function KhitmahApp() {
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
-  }, [fetchBoardData]);
+  }, [fetchBoardData, currentSlug]);
 
   const showToast = (message, type = 'info') => {
     setToastMessage({ message, type });
@@ -150,12 +223,14 @@ function KhitmahApp() {
     }, 6000);
   };
 
-  // "Read" / "قرأت" handler
   const handleReadJuz = async (targetJuz) => {
     const deviceId = getOrCreateDeviceId();
 
     try {
-      const res = await fetch(`/api/juz/${targetJuz.juz_number}/read`, {
+      const readPath = isCustom
+        ? `${apiBase}/juz/${targetJuz.juz_number}/read`
+        : `${apiBase}/${targetJuz.juz_number}/read`;
+      const res = await fetch(readPath, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +240,6 @@ function KhitmahApp() {
       const data = await res.json();
 
       if (res.status === 409) {
-        // Someone else already completed it a moment earlier
         await fetchBoardData();
         showToast(data.message || t('alreadyCompletedAlertDesc'), 'warning');
         setActiveView('dashboard');
@@ -173,7 +247,6 @@ function KhitmahApp() {
       }
 
       if (res.status === 429) {
-        // Cooldown active
         setCooldownRemaining(data.remainingSeconds || 0);
         showToast(data.message || t('cooldownNotice'), 'warning');
         return;
@@ -183,7 +256,6 @@ function KhitmahApp() {
         throw new Error(data.error || data.message || 'حدث خطأ');
       }
 
-      // Success! Update cooldown and board
       setCooldownRemaining(data.remainingSeconds || 2700);
       await fetchBoardData();
       showToast(data.message, 'success');
@@ -197,7 +269,6 @@ function KhitmahApp() {
         });
       }
 
-      // Immediately return to dashboard as required
       setActiveView('dashboard');
     } catch (err) {
       showToast(err.message, 'error');
@@ -205,10 +276,40 @@ function KhitmahApp() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!manageToken || !currentSlug) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/k/${currentSlug}`, {
+        method: 'DELETE',
+        headers: {
+          'x-manage-token': manageToken
+        }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || t('deleteFailed'));
+      }
+      localStorage.removeItem(manageStorageKey(currentSlug));
+      navigate('/');
+    } catch (err) {
+      showToast(err.message, 'error');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const goHome = () => {
+    if (route.name !== 'home') {
+      navigate('/');
+    } else {
+      setActiveView('dashboard');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans transition-colors duration-200">
-      
-      {/* Toast Alert */}
+    <AppShell isWsConnected={isWsConnected} onGoHome={goHome}>
       {toastMessage && (
         <div className="fixed top-20 start-1/2 -translate-x-1/2 z-50 animate-bounce-short">
           <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs font-bold border backdrop-blur-md max-w-md ${
@@ -231,7 +332,6 @@ function KhitmahApp() {
         </div>
       )}
 
-      {/* Khitmah Completion Celebration Banner */}
       {khitmahCelebration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="max-w-lg w-full bg-white dark:bg-stone-900 rounded-3xl p-8 text-center border-2 border-gold-400 dark:border-gold-600 shadow-2xl space-y-4">
@@ -260,45 +360,125 @@ function KhitmahApp() {
         </div>
       )}
 
-      {/* Main Navbar */}
-      <Navbar
-        isWsConnected={isWsConnected}
-        onGoHome={() => setActiveView('dashboard')}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 p-6 text-center space-y-4">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-white font-arabic">
+              {t('deleteConfirmTitle')}
+            </h3>
+            <p className="text-sm text-stone-600 dark:text-stone-300 font-arabic leading-relaxed">
+              {t('deleteConfirmDesc')}
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
+              >
+                {t('cancelBtn')}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 shadow-md disabled:opacity-60"
+              >
+                {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{t('deleteConfirmBtn')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notFound ? (
+        <div className="max-w-md mx-auto my-12 p-8 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-center space-y-4">
+          <h1 className="text-xl font-extrabold font-arabic text-khitmah-900 dark:text-khitmah-100">
+            {t('notFoundTitle')}
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400 font-arabic leading-relaxed">
+            {t('notFoundDesc')}
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-khitmah-700 hover:bg-khitmah-800"
+          >
+            {t('goHome')}
+          </button>
+        </div>
+      ) : boardLoading ? (
+        <div className="min-h-[40vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-khitmah-600 animate-spin" />
+        </div>
+      ) : activeView === 'dashboard' ? (
+        <Dashboard
+          juzList={juzList}
+          counter={counter}
+          cooldownRemaining={cooldownRemaining}
+          apiBase={apiBase}
+          personName={isCustom ? personName : undefined}
+          dedication={isCustom ? dedication : undefined}
+          showCreateButton={!isCustom}
+          onCreateClick={() => navigate('/new')}
+          canManage={Boolean(manageToken)}
+          onDelete={() => setShowDeleteConfirm(true)}
+          onOpenReader={(target) => {
+            setSelectedJuz(target);
+            setActiveView('reader');
+          }}
+        />
+      ) : (
+        <QuranReader
+          juz={selectedJuz}
+          cooldownRemaining={cooldownRemaining}
+          apiBase={apiBase}
+          personName={isCustom ? personName : undefined}
+          dedication={isCustom ? dedication : undefined}
+          onBack={() => setActiveView('dashboard')}
+          onReadJuz={handleReadJuz}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function CreatePage({ navigate }) {
+  return (
+    <AppShell isWsConnected={false} onGoHome={() => navigate('/')}>
+      <CreateKhitmah
+        onGoHome={() => navigate('/')}
+        onGoToKhitmah={(slug) => navigate(`/k/${slug}`)}
       />
-
-      {/* Content View */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeView === 'dashboard' ? (
-          <Dashboard
-            juzList={juzList}
-            counter={counter}
-            cooldownRemaining={cooldownRemaining}
-            onOpenReader={(target) => {
-              setSelectedJuz(target);
-              setActiveView('reader');
-            }}
-          />
-        ) : (
-          <QuranReader
-            juz={selectedJuz}
-            cooldownRemaining={cooldownRemaining}
-            onBack={() => setActiveView('dashboard')}
-            onReadJuz={handleReadJuz}
-          />
-        )}
-      </main>
-
-      {/* Footer on every page */}
-      <Footer />
-
-    </div>
+    </AppShell>
   );
 }
 
 export default function App() {
+  const [route, setRoute] = useState(() => parsePath(window.location.pathname));
+
+  useEffect(() => {
+    const onPop = () => setRoute(parsePath(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    setRobotsNoindex(route.name === 'custom' || route.name === 'new');
+  }, [route]);
+
+  const navigate = (to) => {
+    const path = to.split('?')[0];
+    window.history.pushState({}, '', to);
+    setRoute(parsePath(path));
+  };
+
   return (
     <ThemeProvider>
-      <KhitmahApp />
+      {route.name === 'new' ? (
+        <CreatePage navigate={navigate} />
+      ) : (
+        <KhitmahApp key={route.name === 'custom' ? route.slug : 'home'} route={route} navigate={navigate} />
+      )}
     </ThemeProvider>
   );
 }

@@ -31,7 +31,10 @@ export default function QuranReader({
   juz,
   cooldownRemaining = 0,
   onBack,
-  onReadJuz
+  onReadJuz,
+  apiBase: _apiBase,
+  personName,
+  dedication
 }) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -52,9 +55,14 @@ export default function QuranReader({
 
   const containerRef = useRef(null);
 
-  // Load Juz Pages strictly for this Juz
+  // Load Juz Pages strictly for this Juz (always /api/juz/:id/pages)
   useEffect(() => {
     let isMounted = true;
+    setCurrentPageIndex(0);
+    setJuzData(null);
+    setError(null);
+    setShowConfirmRead(false);
+
     async function fetchPages() {
       setLoading(true);
       setError(null);
@@ -66,7 +74,7 @@ export default function QuranReader({
         const data = await res.json();
         if (isMounted) {
           setJuzData(data);
-          
+
           // Restore saved page index from localStorage if valid
           const savedPage = localStorage.getItem(`khitmah_page_juz_${juz.juz_number}`);
           if (savedPage) {
@@ -351,10 +359,14 @@ export default function QuranReader({
           dir="rtl"
           className="font-arabic font-bold text-base sm:text-lg text-amber-900 dark:text-gold-200 tracking-wide"
         >
-          صدقة جارية عن روح محمد سالم العمري رحمه الله
+          {personName
+            ? t('customKhitmahFor', { name: personName })
+            : 'صدقة جارية عن روح محمد سالم العمري رحمه الله'}
         </p>
         <p className="text-xs text-stone-500 dark:text-stone-400 font-arabic">
-          اللهم تقبل قراءتنا واجعلها في ميزان حسناته
+          {personName
+            ? (dedication || t('customDedicationDefault'))
+            : 'اللهم تقبل قراءتنا واجعلها في ميزان حسناته'}
         </p>
       </div>
 

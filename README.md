@@ -39,8 +39,16 @@ Anyone can browse all 30 Juz', open any available Juz', recite its exact Quranic
 6. **Real-Time Synchronization**:
    - WebSockets broadcast live updates (`BOARD_UPDATE`) whenever a Juz' is completed or reset.
    - Fallback polling every 10 seconds ensures reliable updates across all clients.
+   - Custom khitmah broadcasts include a `slug` so each private page only reacts to its own updates.
 
-7. **Bilingual i18n & Theming**:
+7. **Private custom khitmahs**:
+   - Anyone can open **Create a khitmah** (`/new`) and start a private page in memory of a deceased relative or friend.
+   - Each custom khitmah has its own 30 Juz' board and counter, reachable only via its private link (`/k/<slug>`).
+   - There is no public listing. Custom pages send `noindex` and `robots.txt` disallows `/k/`.
+   - The manage link (`/k/<slug>?manage=<token>`) is shown once at creation and can delete that khitmah. Store it safely.
+   - Optional `ADMIN_TOKEN` allows deleting a custom khitmah with the `x-admin-token` header. If unset or empty, admin delete is fully disabled.
+
+8. **Bilingual i18n & Theming**:
    - Arabic (Default) with automatic RTL layout (`dir="rtl"`).
    - English with automatic LTR layout (`dir="ltr"`).
    - Dark mode & Light mode toggle, stored in `localStorage`, respecting system preference on first load.
@@ -77,7 +85,7 @@ khitmah/
 │
 ├── server/                     # Backend (Node.js + Express + WebSockets)
 │   ├── src/
-│   │   ├── routes/             # juz.js (Read action, 45-min cooldown, pages)
+│   │   ├── routes/             # juz.js (main board) and khitmahs.js (private /api/k)
 │   │   ├── db.js               # PostgreSQL abstraction (PGlite / pg pool)
 │   │   ├── schema.sql          # DB schema & tables
 │   │   ├── quranService.js     # Madani Mushaf page mapping & Uthmani caching
@@ -114,6 +122,9 @@ PORT=5000
 
 # Optional external PostgreSQL connection string:
 # DATABASE_URL=postgresql://postgres:password@localhost:5432/khitmah
+
+# Optional admin token for deleting custom khitmahs (leave unset to disable):
+# ADMIN_TOKEN=
 ```
 
 > **Note**: If `DATABASE_URL` is omitted, the app will run with zero external setup using the built-in embedded PostgreSQL (`PGlite`) persisting data in `server/data/pgdata`.
@@ -146,3 +157,4 @@ Verifies:
 - Conditional update conflict rejection (409)
 - Scoped Quran pages retrieval (pages 1–21 for Juz 1)
 - Atomic 30-Juz' community completion reset
+- Custom khitmah create / rate limits / 404 / isolated 30/30 reset / delete tokens

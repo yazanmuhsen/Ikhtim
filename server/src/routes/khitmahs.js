@@ -10,12 +10,11 @@ const COOLDOWN_SECONDS = 45 * 60; // 45 minutes
 // --- Helpers ---
 
 function generateSlug() {
-  // 8 random lowercase alphanumeric characters
-  const bytes = crypto.randomBytes(6);
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.randomBytes(8);
   let slug = '';
   for (let i = 0; i < 8; i++) {
-    slug += chars[bytes[i % bytes.length] % chars.length];
+    slug += chars[bytes[i] % chars.length];
   }
   return slug;
 }
@@ -26,6 +25,18 @@ function generateManageToken() {
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 function getClientIdentifier(req) {
@@ -100,6 +111,11 @@ function sanitizePlainText(str) {
 // POST /api/k — Create a custom khitmah
 router.post('/', async (req, res) => {
   try {
+    const headerDeviceId = (req.headers['x-device-id'] || '').toString().trim();
+    if (!headerDeviceId) {
+      return res.status(400).json({ error: 'Device identifier required' });
+    }
+
     const { deviceId, ip } = getClientIdentifier(req);
 
     // Validate input
@@ -396,7 +412,8 @@ router.delete('/:slug', async (req, res) => {
     const { slug } = req.params;
     const manageToken = req.headers['x-manage-token'];
     const adminToken = req.headers['x-admin-token'];
-    const envAdminToken = process.env.ADMIN_TOKEN;
+    const envAdminToken = (process.env.ADMIN_TOKEN || '').trim();
+    const adminEnabled = envAdminToken.length > 0;
 
     // Find khitmah
     const khitmahRes = await db.query(
@@ -412,11 +429,11 @@ router.delete('/:slug', async (req, res) => {
     // Authorize: manage token or admin token
     let authorized = false;
 
-    if (manageToken && hashToken(manageToken) === khitmah.manage_token_hash) {
+    if (manageToken && safeEqual(hashToken(String(manageToken)), khitmah.manage_token_hash)) {
       authorized = true;
     }
 
-    if (adminToken && envAdminToken && adminToken === envAdminToken) {
+    if (adminEnabled && adminToken && safeEqual(String(adminToken), envAdminToken)) {
       authorized = true;
     }
 

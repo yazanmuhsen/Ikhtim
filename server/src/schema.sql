@@ -18,3 +18,28 @@ CREATE TABLE IF NOT EXISTS reader_cooldown (
 -- Drop legacy tables if they exist
 DROP TABLE IF EXISTS completion_log CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+
+-- Custom khitmahs feature
+CREATE TABLE IF NOT EXISTS khitmahs (
+  id SERIAL PRIMARY KEY,
+  slug VARCHAR(16) UNIQUE NOT NULL,
+  person_name VARCHAR(100) NOT NULL,
+  dedication VARCHAR(400) DEFAULT '',
+  manage_token_hash VARCHAR(128) NOT NULL,
+  creator_device_id VARCHAR(64),
+  creator_ip VARCHAR(45),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS khitmah_juz (
+  khitmah_id INT NOT NULL,
+  juz_number INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'available',
+  completed_at TIMESTAMP,
+  PRIMARY KEY (khitmah_id, juz_number)
+);
+
+CREATE TABLE IF NOT EXISTS khitmah_counters (
+  khitmah_id INT PRIMARY KEY,
+  total_completed INT NOT NULL DEFAULT 0
+);

@@ -62,7 +62,38 @@ const resources = {
       // Live updates
       liveConnected: 'متصل بالبث المباشر',
       liveDisconnected: 'جاري إعادة الاتصال...',
-      refreshNow: 'تحديث'
+      refreshNow: 'تحديث',
+
+      // Custom Khitmahs
+      createKhitmah: 'أنشئ ختمة',
+      createKhitmahTitle: 'إنشاء ختمة جديدة',
+      createKhitmahDesc: 'أنشئ صفحة ختمة خاصة لتلاوة القرآن الكريم صدقةً عن روح عزيز لديك',
+      personNameLabel: 'اسم المتوفى',
+      personNamePlaceholder: 'مثال: محمد عبد الله',
+      dedicationLabel: 'نص الإهداء (اختياري)',
+      dedicationPlaceholder: 'مثال: اللهم اغفر له وارحمه',
+      createBtn: 'إنشاء الختمة',
+      creating: 'جاري الإنشاء...',
+      khitmahCreated: 'تم إنشاء الختمة بنجاح!',
+      shareLinkLabel: 'رابط المشاركة',
+      copyLink: 'نسخ الرابط',
+      linkCopied: 'تم النسخ!',
+      shareWhatsApp: 'مشاركة عبر واتساب',
+      manageLinkLabel: 'رابط الإدارة (احفظه)',
+      manageLinkWarning: '⚠️ احفظ هذا الرابط فوراً! لن يظهر مجدداً. يمكنك من خلاله حذف الختمة لاحقاً.',
+      goToKhitmah: 'انتقل إلى الختمة',
+      customKhitmahFor: 'صدقة جارية عن روح {{name}} رحمه الله',
+      customDedicationDefault: 'اللهم اغفر له وارحمه واجعل القرآن له نوراً وشفيعاً',
+      deleteKhitmah: 'حذف الختمة',
+      deleteConfirmTitle: 'تأكيد حذف الختمة',
+      deleteConfirmDesc: 'هل أنت متأكد من حذف هذه الختمة؟ سيتم حذف جميع البيانات نهائياً.',
+      deleteConfirmBtn: 'نعم، احذف',
+      notFoundTitle: 'الصفحة غير موجودة',
+      notFoundDesc: 'الختمة التي تبحث عنها غير موجودة أو تم حذفها.',
+      goHome: 'العودة للصفحة الرئيسية',
+      nameRequired: 'اسم المتوفى مطلوب',
+      nameTooLong: 'الاسم يجب ألا يتجاوز ٨٠ حرفاً',
+      dedicationTooLong: 'الإهداء يجب ألا يتجاوز ٣٠٠ حرف'
     }
   },
   en: {
@@ -125,7 +156,38 @@ const resources = {
       // Live updates
       liveConnected: 'Live connected',
       liveDisconnected: 'Reconnecting...',
-      refreshNow: 'Refresh'
+      refreshNow: 'Refresh',
+
+      // Custom Khitmahs
+      createKhitmah: 'Create a Khitmah',
+      createKhitmahTitle: 'Create a New Khitmah',
+      createKhitmahDesc: 'Create a private Khitmah page to recite the Holy Quran in memory of a loved one',
+      personNameLabel: 'Name of the Deceased',
+      personNamePlaceholder: 'e.g. Muhammad Abdullah',
+      dedicationLabel: 'Dedication Text (optional)',
+      dedicationPlaceholder: 'e.g. May Allah have mercy on them',
+      createBtn: 'Create Khitmah',
+      creating: 'Creating...',
+      khitmahCreated: 'Khitmah created successfully!',
+      shareLinkLabel: 'Share Link',
+      copyLink: 'Copy Link',
+      linkCopied: 'Copied!',
+      shareWhatsApp: 'Share via WhatsApp',
+      manageLinkLabel: 'Management Link (save it!)',
+      manageLinkWarning: '⚠️ Save this link now! It will not be shown again. You can use it to delete the Khitmah later.',
+      goToKhitmah: 'Go to Khitmah',
+      customKhitmahFor: 'In loving memory of {{name}} — may Allah have mercy on them',
+      customDedicationDefault: 'May Allah forgive them, have mercy on them, and make the Quran a light for them',
+      deleteKhitmah: 'Delete Khitmah',
+      deleteConfirmTitle: 'Confirm Deletion',
+      deleteConfirmDesc: 'Are you sure you want to delete this Khitmah? All data will be permanently removed.',
+      deleteConfirmBtn: 'Yes, Delete',
+      notFoundTitle: 'Page Not Found',
+      notFoundDesc: 'The Khitmah you are looking for does not exist or has been deleted.',
+      goHome: 'Go to Home Page',
+      nameRequired: 'Name of the deceased is required',
+      nameTooLong: 'Name must be 80 characters or fewer',
+      dedicationTooLong: 'Dedication must be 300 characters or fewer'
     }
   }
 };

@@ -28,7 +28,9 @@ export default function Dashboard({
   juzList = [],
   counter = { totalCompleted: 0, currentProgress: 0, availableCount: 30, totalJuz: 30 },
   cooldownRemaining = 0,
-  onOpenReader
+  onOpenReader,
+  personName,
+  dedication
 }) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';

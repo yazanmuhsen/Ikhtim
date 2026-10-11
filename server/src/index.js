@@ -11,6 +11,7 @@ dotenv.config();
 const { initDb } = require('./db');
 const { setupWebSocket } = require('./websocket');
 const { router: juzRoutes } = require('./routes/juz');
+const { router: khitmahRoutes } = require('./routes/khitmahs');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +20,7 @@ const server = http.createServer(app);
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id', 'x-manage-token', 'x-admin-token']
 }));
 
 app.use(express.json());
@@ -39,6 +40,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/juz', juzRoutes);
+app.use('/api/k', khitmahRoutes);
 
 // Serve static frontend build if present
 const clientDist = path.join(__dirname, '../../client/dist');

@@ -1,6 +1,18 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
-export default function DedicationBanner() {
+export default function DedicationBanner({ personName, dedication }) {
+  const { t } = useTranslation();
+  const isCustom = Boolean(personName);
+
+  const mainText = isCustom
+    ? t('customKhitmahFor', { name: personName })
+    : 'صدقة جارية عن روح محمد سالم العمري رحمه الله';
+
+  const subText = isCustom
+    ? (dedication || t('customDedicationDefault'))
+    : 'اللهم اغفر له وارحمه واجعل القرآن له نوراً وشفيعاً';
+
   return (
     <aside 
       aria-label="إهداء وصدقة جارية"
@@ -24,14 +36,14 @@ export default function DedicationBanner() {
         dir="rtl"
         className="font-arabic font-bold text-lg sm:text-xl md:text-2xl text-amber-950 dark:text-gold-100 tracking-wide leading-relaxed selection:bg-gold-500 selection:text-white"
       >
-        صدقة جارية عن روح محمد سالم العمري رحمه الله
+        {mainText}
       </h2>
 
       {/* Decorative Bottom Divider */}
       <div className="flex items-center justify-center gap-2 mt-2">
         <div className="h-px w-16 sm:w-28 bg-gradient-to-r from-transparent via-gold-400/60 to-transparent dark:via-gold-500/60" />
         <span className="text-[10px] text-gold-700/80 dark:text-gold-300/80 font-arabic">
-          اللهم اغفر له وارحمه واجعل القرآن له نوراً وشفيعاً
+          {subText}
         </span>
         <div className="h-px w-16 sm:w-28 bg-gradient-to-r from-transparent via-gold-400/60 to-transparent dark:via-gold-500/60" />
       </div>

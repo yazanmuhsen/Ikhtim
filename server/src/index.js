@@ -67,8 +67,8 @@ async function startServer() {
     server.once('error', onError);
     server.listen(port, () => {
       server.removeListener('error', onError);
-      console.log(`🌟 Khitmah Backend running on http://localhost:${port}`);
-      console.log(`📡 WebSocket server ready at ws://localhost:${port}/ws`);
+      console.log(`[server] Khitmah Backend running on http://localhost:${port}`);
+      console.log(`[ws] WebSocket server ready at ws://localhost:${port}/ws`);
       resolve();
     });
   });

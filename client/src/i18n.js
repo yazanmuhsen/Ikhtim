@@ -78,7 +78,7 @@ const resources = {
       alreadyCompletedAlertDesc: 'هذا الجزء تم إتمامه بالفعل من قِبل قارئ آخر للتو. تقبل الله من الجميع!',
 
       // Celebrations
-      khitmahCompletedAlertTitle: '🎉 مبارك! أتمت الأمة الختمة بنجاح',
+      khitmahCompletedAlertTitle: 'مبارك! أتمت الأمة الختمة بنجاح',
       khitmahCompletedAlertDesc: 'الحمد لله الذي بنعمته تتم الصالحات. تم إتمام جميع الأجزاء الـ ٣٠ وبدأت ختمة جديدة مباركة!',
 
       // Live updates
@@ -205,7 +205,7 @@ const resources = {
       alreadyCompletedAlertDesc: 'This Juz was just completed by another reader a moment earlier. May Allah accept from all!',
 
       // Celebrations
-      khitmahCompletedAlertTitle: '🎉 Mubarak! Community Khitmah Completed!',
+      khitmahCompletedAlertTitle: 'Mubarak! Community Khitmah Completed!',
       khitmahCompletedAlertDesc: 'All 30 Juz have been completed! The counter has incremented and a new Khitmah has started.',
 
       // Live updates

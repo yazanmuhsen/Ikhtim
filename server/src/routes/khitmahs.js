@@ -381,7 +381,7 @@ router.post('/:slug/juz/:id/read', async (req, res) => {
           `UPDATE khitmah_juz SET status = 'available', completed_at = NULL WHERE khitmah_id = $1`,
           [khitmahId]
         );
-        console.log(`🎉 Custom Khitmah "${slug}" #${newTotalKhitmahs} COMPLETED! Resetting its 30 Juz.`);
+        console.log(`Custom Khitmah "${slug}" #${newTotalKhitmahs} COMPLETED! Resetting its 30 Juz.`);
         await tx.query(`UPDATE global_stats SET custom_completed = custom_completed + 1 WHERE id = 1`);
       }
 

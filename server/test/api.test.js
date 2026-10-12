@@ -414,6 +414,105 @@ async function runTests() {
       );
     }
 
+    // --- STAGE 4: GLOBAL STATS TESTS ---
+    // 22. GET /api/stats initial shape & exact fields
+    const statsInitial = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsInitial.status, 200);
+    const keys = Object.keys(statsInitial.data).sort();
+    assert.deepStrictEqual(keys, ['customCompleted', 'globalCompleted', 'khitmahsCreated', 'mainCompleted'].sort());
+    assert.strictEqual(typeof statsInitial.data.globalCompleted, 'number');
+    assert.strictEqual(typeof statsInitial.data.mainCompleted, 'number');
+    assert.strictEqual(typeof statsInitial.data.customCompleted, 'number');
+    assert.strictEqual(typeof statsInitial.data.khitmahsCreated, 'number');
+    assert.strictEqual(statsInitial.data.globalCompleted, statsInitial.data.mainCompleted + statsInitial.data.customCompleted);
+    const prevCreated = statsInitial.data.khitmahsCreated;
+    const prevCustomCompleted = statsInitial.data.customCompleted;
+    const prevGlobal = statsInitial.data.globalCompleted;
+    console.log('✅ 22. /api/stats returns exactly 4 expected numeric fields and consistent sum');
+
+    // 23. Creating a new khitmah increments khitmahsCreated, but not customCompleted or globalCompleted
+    const statsTestKhitmah = await createKhitmah('Stats Test Page', '', `stats-dev-${Date.now()}`, '198.51.100.80');
+    assert.strictEqual(statsTestKhitmah.status, 201);
+    
+    // Clear in-memory stats cache by waiting or testing DB directly / checking endpoint after TTL
+    // In stats.js TTL is 5000ms. We can sleep 5100ms to let cache expire.
+    await new Promise(r => setTimeout(r, 5200));
+    const statsAfterCreate = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsAfterCreate.status, 200);
+    assert.strictEqual(statsAfterCreate.data.khitmahsCreated, prevCreated + 1);
+    assert.strictEqual(statsAfterCreate.data.customCompleted, prevCustomCompleted);
+    assert.strictEqual(statsAfterCreate.data.globalCompleted, prevGlobal);
+    console.log('✅ 23. Creating custom khitmah increments khitmahsCreated atomically');
+
+    // 24. Partial progress (e.g. 1-29 juz) does NOT increment globalCompleted or customCompleted
+    for (let j = 1; j <= 29; j++) {
+      const readRes = await makeRequest(
+        'POST',
+        `/api/k/${statsTestKhitmah.data.slug}/juz/${j}/read`,
+        {},
+        `stats-reader-${j}-${Date.now()}`,
+        `198.51.100.${80 + j}`
+      );
+      assert.strictEqual(readRes.status, 200);
+    }
+    await new Promise(r => setTimeout(r, 5200));
+    const statsPartial = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsPartial.data.customCompleted, prevCustomCompleted);
+    assert.strictEqual(statsPartial.data.globalCompleted, prevGlobal);
+    console.log('✅ 24. Partial progress (29/30) does NOT increment globalCompleted');
+
+    // 25. Completing 30/30 increments customCompleted and globalCompleted by exactly 1
+    const read30 = await makeRequest(
+      'POST',
+      `/api/k/${statsTestKhitmah.data.slug}/juz/30/read`,
+      {},
+      `stats-reader-30-${Date.now()}`,
+      '198.51.100.120'
+    );
+    assert.strictEqual(read30.status, 200);
+    await new Promise(r => setTimeout(r, 5200));
+    const statsAfter30 = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsAfter30.data.customCompleted, prevCustomCompleted + 1);
+    assert.strictEqual(statsAfter30.data.globalCompleted, prevGlobal + 1);
+    console.log('✅ 25. Completing 30/30 increments globalCompleted and customCompleted by exactly 1');
+
+    // 26. Two simultaneous / concurrent completions give +2
+    const c1 = await createKhitmah('Concurrent 1', '', `c1-dev-${Date.now()}`, '198.51.100.130');
+    const c2 = await createKhitmah('Concurrent 2', '', `c2-dev-${Date.now()}`, '198.51.100.131');
+    for (let j = 1; j <= 29; j++) {
+      await makeRequest('POST', `/api/k/${c1.data.slug}/juz/${j}/read`, {}, `c1-r-${j}`, `198.51.101.${j}`);
+      await makeRequest('POST', `/api/k/${c2.data.slug}/juz/${j}/read`, {}, `c2-r-${j}`, `198.51.102.${j}`);
+    }
+    // Complete 30th juz simultaneously
+    const [resC1, resC2] = await Promise.all([
+      makeRequest('POST', `/api/k/${c1.data.slug}/juz/30/read`, {}, `c1-r-30`, '198.51.101.30'),
+      makeRequest('POST', `/api/k/${c2.data.slug}/juz/30/read`, {}, `c2-r-30`, '198.51.102.30')
+    ]);
+    assert.strictEqual(resC1.status, 200);
+    assert.strictEqual(resC2.status, 200);
+    await new Promise(r => setTimeout(r, 5200));
+    const statsAfterConcurrent = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsAfterConcurrent.data.customCompleted, prevCustomCompleted + 3);
+    assert.strictEqual(statsAfterConcurrent.data.globalCompleted, prevGlobal + 3);
+    console.log('✅ 26. Two simultaneous completions result in +2 to global count');
+
+    // 27. Deleting a khitmah page does NOT decrease global counters
+    const delRes = await makeRequest(
+      'DELETE',
+      `/api/k/${statsTestKhitmah.data.slug}`,
+      null,
+      null,
+      null,
+      { 'x-manage-token': statsTestKhitmah.data.manageToken }
+    );
+    assert.strictEqual(delRes.status, 200);
+    await new Promise(r => setTimeout(r, 5200));
+    const statsAfterDelete = await makeRequest('GET', '/api/stats');
+    assert.strictEqual(statsAfterDelete.data.customCompleted, prevCustomCompleted + 3);
+    assert.strictEqual(statsAfterDelete.data.globalCompleted, prevGlobal + 3);
+    assert.ok(statsAfterDelete.data.khitmahsCreated >= prevCreated + 3);
+    console.log('✅ 27. Deleting khitmah page does NOT decrease globalCompleted or khitmahsCreated');
+
     console.log('\n🌟 ALL TESTS PASSED SUCCESSFULLY! 🌟\n');
   } catch (err) {
     console.error('❌ Test failed:', err);

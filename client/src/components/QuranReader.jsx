@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+import { getLocalizedPersonName, getDedicationTitle, getDedicationSubtitle } from '../utils/personName';
+
 function toArabicNum(num, isArabic) {
   if (!isArabic) return num;
   const easternDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -34,6 +36,8 @@ export default function QuranReader({
   onReadJuz,
   apiBase: _apiBase,
   personName,
+  personNameAr,
+  personNameEn,
   dedication
 }) {
   const { t, i18n } = useTranslation();
@@ -354,20 +358,16 @@ export default function QuranReader({
       {/* Reader Page Footer Dedication & Logo */}
       <div className="pt-6 pb-12 text-center space-y-2 border-t border-stone-200/80 dark:border-stone-800/80 mt-10">
         <div className="flex justify-center mb-1">
-          <img src="/logo.svg" alt="Khitmah Logo" className="w-7 h-7 opacity-80" />
+          <img src="/logo.svg" alt="Ikhtim Logo" className="w-7 h-7 opacity-80" />
         </div>
         <p 
-          dir="rtl"
-          className="font-arabic font-bold text-base sm:text-lg text-amber-900 dark:text-gold-200 tracking-wide"
+          dir={isAr ? 'rtl' : 'ltr'}
+          className="font-arabic font-bold text-base sm:text-lg text-stone-900 dark:text-stone-100 tracking-wide"
         >
-          {personName
-            ? t('customKhitmahFor', { name: personName })
-            : 'صدقة جارية عن روح محمد سالم العمري رحمه الله'}
+          {getDedicationTitle({ personName, personNameAr, personNameEn, dedication }, i18n.language, t)}
         </p>
         <p className="text-xs text-stone-500 dark:text-stone-400 font-arabic">
-          {personName
-            ? (dedication || t('customDedicationDefault'))
-            : 'اللهم تقبل قراءتنا واجعلها في ميزان حسناته'}
+          {getDedicationSubtitle({ personName, personNameAr, personNameEn, dedication }, i18n.language, t)}
         </p>
       </div>
 

@@ -30,6 +30,8 @@ export default function Dashboard({
   cooldownRemaining = 0,
   onOpenReader,
   personName,
+  personNameAr,
+  personNameEn,
   dedication,
   apiBase: _apiBase,
   showCreateButton = false,
@@ -55,7 +57,12 @@ export default function Dashboard({
     <div className="space-y-6 sm:space-y-8 pb-16">
       
       {/* Dedication Banner directly under the navbar */}
-      <DedicationBanner personName={personName} dedication={dedication} />
+      <DedicationBanner 
+        personName={personName} 
+        personNameAr={personNameAr} 
+        personNameEn={personNameEn} 
+        dedication={dedication} 
+      />
 
       {showCreateButton && (
         <div className="flex justify-center -mt-2">

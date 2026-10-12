@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 
 export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
 
-  const [personName, setPersonName] = useState('');
+  const [personNameAr, setPersonNameAr] = useState('');
+  const [personNameEn, setPersonNameEn] = useState('');
   const [dedication, setDedication] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,10 +27,12 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
   function validate() {
-    const name = personName.trim();
+    const nameAr = personNameAr.trim();
+    const nameEn = personNameEn.trim();
     const ded = dedication.trim();
-    if (name.length < 1) return t('nameRequired');
-    if (name.length > 80) return t('nameTooLong');
+    if (nameAr.length < 1) return t('nameArRequired');
+    if (nameEn.length < 1) return t('nameEnRequired');
+    if (nameAr.length > 80 || nameEn.length > 80) return t('nameTooLong');
     if (ded.length > 300) return t('dedicationTooLong');
     return '';
   }
@@ -52,7 +56,8 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
           'x-device-id': deviceId
         },
         body: JSON.stringify({
-          personName: personName.trim(),
+          personNameAr: personNameAr.trim(),
+          personNameEn: personNameEn.trim(),
           dedication: dedication.trim()
         })
       });
@@ -66,7 +71,8 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
         slug: data.slug,
         manageToken: data.manageToken,
         shareUrl: `${origin}/k/${data.slug}`,
-        manageUrl: `${origin}/k/${data.slug}?manage=${encodeURIComponent(data.manageToken)}`
+        manageUrl: `${origin}/k/${data.slug}?manage=${encodeURIComponent(data.manageToken)}`,
+        nameForShare: isAr ? personNameAr.trim() : personNameEn.trim()
       });
     } catch (err) {
       setError(err.message || t('createFailed'));
@@ -85,15 +91,49 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
     }
   }
 
+  const arabicField = (
+    <label key="name-ar" className="block space-y-1.5">
+      <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+        {t('personNameArLabel')}
+      </span>
+      <input
+        type="text"
+        dir="rtl"
+        value={personNameAr}
+        onChange={(e) => setPersonNameAr(e.target.value)}
+        maxLength={80}
+        placeholder={t('personNameArPlaceholder')}
+        className="w-full px-3 py-2.5 rounded-xl text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600 font-arabic"
+      />
+    </label>
+  );
+
+  const englishField = (
+    <label key="name-en" className="block space-y-1.5">
+      <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+        {t('personNameEnLabel')}
+      </span>
+      <input
+        type="text"
+        dir="ltr"
+        value={personNameEn}
+        onChange={(e) => setPersonNameEn(e.target.value)}
+        maxLength={80}
+        placeholder={t('personNameEnPlaceholder')}
+        className="w-full px-3 py-2.5 rounded-xl text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+      />
+    </label>
+  );
+
   return (
     <div className="max-w-xl mx-auto space-y-6 pb-16">
-      <div className="rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-sm p-6 sm:p-8 space-y-5">
+      <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 sm:p-8 space-y-5">
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl bg-khitmah-50 dark:bg-khitmah-950/50 text-khitmah-700 dark:text-khitmah-300 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-200/80 dark:border-emerald-800">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold font-arabic text-khitmah-900 dark:text-khitmah-100">
+            <h1 className="text-xl sm:text-2xl font-bold font-arabic text-stone-900 dark:text-stone-100">
               {t('createKhitmahTitle')}
             </h1>
             <p className="mt-1 text-sm text-stone-600 dark:text-stone-400 font-arabic leading-relaxed">
@@ -104,19 +144,8 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
 
         {!created ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                {t('personNameLabel')}
-              </span>
-              <input
-                type="text"
-                value={personName}
-                onChange={(e) => setPersonName(e.target.value)}
-                maxLength={80}
-                placeholder={t('personNamePlaceholder')}
-                className="w-full px-3 py-2.5 rounded-xl text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-khitmah-500"
-              />
-            </label>
+            {/* If visitor is Arabic, show Arabic field first; else show English field first */}
+            {isAr ? [arabicField, englishField] : [englishField, arabicField]}
 
             <label className="block space-y-1.5">
               <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
@@ -128,7 +157,7 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
                 maxLength={300}
                 rows={3}
                 placeholder={t('dedicationPlaceholder')}
-                className="w-full px-3 py-2.5 rounded-xl text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-khitmah-500 resize-y"
+                className="w-full px-3 py-2.5 rounded-xl text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600 resize-y"
               />
             </label>
 
@@ -139,18 +168,18 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
               </div>
             )}
 
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={onGoHome}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               >
                 {t('goHome')}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-khitmah-700 to-khitmah-900 hover:from-khitmah-800 hover:to-black shadow-md disabled:opacity-60"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 border border-emerald-900 disabled:opacity-60 transition-colors"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{loading ? t('creating') : t('createBtn')}</span>
@@ -175,14 +204,14 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
                 <button
                   type="button"
                   onClick={() => copyText(created.shareUrl, 'share')}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-stone-100 dark:bg-stone-800"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   {copied === 'share' ? t('linkCopied') : t('copyLink')}
                 </button>
               </div>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`${t('whatsAppShareText', { name: personName.trim() })} ${created.shareUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`${t('whatsAppShareText', { name: created.nameForShare })} ${created.shareUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline"
@@ -192,7 +221,7 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
               </a>
             </div>
 
-            <div className="space-y-2 rounded-2xl border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/80 dark:bg-amber-950/30 p-4">
+            <div className="space-y-2 rounded-xl border border-amber-300/70 dark:border-amber-700/60 bg-amber-50/80 dark:bg-amber-950/30 p-4">
               <p className="text-xs font-bold text-amber-900 dark:text-amber-100 flex items-center gap-1.5">
                 <ShieldAlert className="w-4 h-4" />
                 {t('manageLinkLabel')}
@@ -209,7 +238,7 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
                 <button
                   type="button"
                   onClick={() => copyText(created.manageUrl, 'manage')}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-100 dark:bg-amber-900/50"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-100 dark:bg-amber-900/50 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   {copied === 'manage' ? t('linkCopied') : t('copyLink')}
@@ -220,7 +249,7 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
             <button
               type="button"
               onClick={() => onGoToKhitmah(created.slug)}
-              className="w-full px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-khitmah-700 hover:bg-khitmah-800"
+              className="w-full px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 transition-colors"
             >
               {t('goToKhitmah')}
             </button>
@@ -230,4 +259,3 @@ export default function CreateKhitmah({ onGoHome, onGoToKhitmah }) {
     </div>
   );
 }
-

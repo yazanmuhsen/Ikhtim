@@ -1,51 +1,37 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLocalizedPersonName, getDedicationTitle, getDedicationSubtitle } from '../utils/personName';
 
-export default function DedicationBanner({ personName, dedication }) {
-  const { t } = useTranslation();
-  const isCustom = Boolean(personName);
+export default function DedicationBanner({ personName, personNameAr, personNameEn, dedication }) {
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  
+  const khitmahData = { personName, personNameAr, personNameEn, dedication };
+  const hasPerson = Boolean(getLocalizedPersonName(khitmahData, i18n.language));
 
-  const mainText = isCustom
-    ? t('customKhitmahFor', { name: personName })
-    : 'صدقة جارية عن روح محمد سالم العمري رحمه الله';
-
-  const subText = isCustom
-    ? (dedication || t('customDedicationDefault'))
-    : 'اللهم اغفر له وارحمه واجعل القرآن له نوراً وشفيعاً';
+  const mainText = getDedicationTitle(khitmahData, i18n.language, t);
+  const subText = getDedicationSubtitle(khitmahData, i18n.language, t);
 
   return (
     <aside 
       aria-label="إهداء وصدقة جارية"
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gold-500/10 via-amber-500/15 to-gold-500/10 dark:from-gold-950/40 dark:via-amber-950/50 dark:to-gold-950/40 border border-gold-300/80 dark:border-gold-700/60 p-4 sm:p-5 shadow-sm text-center"
+      className="relative overflow-hidden rounded-2xl bg-amber-50/70 dark:bg-stone-900/80 border border-amber-200/80 dark:border-stone-800 p-5 sm:p-6 text-center"
     >
-      {/* Subtle corner ornamental accents */}
-      <div className="absolute top-0 start-0 w-8 h-8 border-t-2 border-s-2 border-gold-400/60 dark:border-gold-500/40 rounded-tl-xl pointer-events-none" />
-      <div className="absolute top-0 end-0 w-8 h-8 border-t-2 border-e-2 border-gold-400/60 dark:border-gold-500/40 rounded-tr-xl pointer-events-none" />
-      <div className="absolute bottom-0 start-0 w-8 h-8 border-b-2 border-s-2 border-gold-400/60 dark:border-gold-500/40 rounded-bl-xl pointer-events-none" />
-      <div className="absolute bottom-0 end-0 w-8 h-8 border-b-2 border-e-2 border-gold-400/60 dark:border-gold-500/40 rounded-br-xl pointer-events-none" />
-
-      {/* Decorative Top Divider */}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <div className="h-px w-12 sm:w-20 bg-gradient-to-r from-transparent via-gold-400 to-transparent dark:via-gold-500" />
-        <span className="text-gold-600 dark:text-gold-400 text-xs select-none">✦ ﷽ ✦</span>
-        <div className="h-px w-12 sm:w-20 bg-gradient-to-r from-transparent via-gold-400 to-transparent dark:via-gold-500" />
+      <div className="flex items-center justify-center gap-2 mb-2 select-none">
+        <span className="text-stone-400 dark:text-stone-600 text-xs">— ﷽ —</span>
       </div>
 
-      {/* Primary Dedication Text (Arabic, large, centered, Amiri font) */}
       <h2 
-        dir="rtl"
-        className="font-arabic font-bold text-lg sm:text-xl md:text-2xl text-amber-950 dark:text-gold-100 tracking-wide leading-relaxed selection:bg-gold-500 selection:text-white"
+        dir={isAr ? 'rtl' : 'ltr'}
+        className="font-arabic font-bold text-lg sm:text-xl md:text-2xl text-stone-900 dark:text-stone-100 tracking-wide leading-relaxed"
       >
         {mainText}
       </h2>
 
-      {/* Decorative Bottom Divider */}
       <div className="flex items-center justify-center gap-2 mt-2">
-        <div className="h-px w-16 sm:w-28 bg-gradient-to-r from-transparent via-gold-400/60 to-transparent dark:via-gold-500/60" />
-        <span className="text-[10px] text-gold-700/80 dark:text-gold-300/80 font-arabic">
+        <span className="text-xs text-stone-600 dark:text-stone-400 font-arabic">
           {subText}
         </span>
-        <div className="h-px w-16 sm:w-28 bg-gradient-to-r from-transparent via-gold-400/60 to-transparent dark:via-gold-500/60" />
       </div>
     </aside>
   );

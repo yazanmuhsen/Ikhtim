@@ -186,6 +186,7 @@ router.post('/', async (req, res) => {
         [slug, personName, dedication, manageTokenHash, deviceId || null, ip || null]
       );
       const khitmahId = insertRes.rows[0].id;
+      await tx.query(`UPDATE global_stats SET khitmahs_created = khitmahs_created + 1 WHERE id = 1`);
 
       // Insert 30 juz rows
       for (let i = 1; i <= 30; i++) {
@@ -367,6 +368,7 @@ router.post('/:slug/juz/:id/read', async (req, res) => {
           [khitmahId]
         );
         console.log(`🎉 Custom Khitmah "${slug}" #${newTotalKhitmahs} COMPLETED! Resetting its 30 Juz.`);
+        await tx.query(`UPDATE global_stats SET custom_completed = custom_completed + 1 WHERE id = 1`);
       }
 
       return {

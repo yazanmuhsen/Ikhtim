@@ -2,8 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, Heart, Layers, ShieldCheck, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 
-// Exact Uthmani text of Surah 5:2 (Al-Ma'idah, Ayah 2) fetched directly from the app's Quran source
-const VERSE_UTHMANI_TEXT = "«إِذَا مَاتَ ابنُ آدَمَ انْقَطَعَ عَمَلُهُ إِلَّا مِنْ ثَلَاثٍ: صَدَقَةٍ جَارِيَةٍ، أَوْ عِلْمٍ يُنْتَفَعُ بِهِ، أَوْ وَلَدٍ صَالِحٍ يَدْعُو لَهُ»";
+export const HADITH_TEXT = "«إِذَا مَاتَ ابنُ آدَمَ انْقَطَعَ عَمَلُهُ إِلَّا مِنْ ثَلَاثٍ: صَدَقَةٍ جَارِيَةٍ، أَوْ عِلْمٍ يُنْتَفَعُ بِهِ، أَوْ وَلدٍ صَالِحٍ يَدْعُو لَهُ»";
 
 export default function LandingPage({ navigate }) {
   const { t, i18n } = useTranslation();
@@ -91,22 +90,22 @@ export default function LandingPage({ navigate }) {
         </div>
       </section>
 
-      {/* 2. QURAN VERSE BLOCK (5:2) */}
-      <section className="rounded-2xl bg-amber-50/60 dark:bg-stone-900/60 border border-amber-200/80 dark:border-stone-800 p-6 sm:p-10 text-center space-y-4">
-        <div className="text-stone-400 dark:text-stone-500 text-xs font-arabic select-none">
-          — ﷽ —
-        </div>
-        <blockquote className="text-lg sm:text-2xl text-stone-900 dark:text-stone-100 font-arabic leading-loose tracking-wide selection:bg-amber-200 dark:selection:bg-stone-700">
-          «{VERSE_UTHMANI_TEXT}»
+      {/* 2. HADITH BLOCK */}
+      <section className="space-y-4 py-6 text-center">
+        <blockquote className="text-lg sm:text-2xl font-arabic leading-loose text-stone-900 dark:text-stone-100">
+          «إِذَا مَاتَ ابنُ آدَمَ انْقَطَعَ عَمَلُهُ إِلَّا مِنْ ثَلَاثٍ: صَدَقَةٍ جَارِيَةٍ، أَوْ عِلْمٍ يُنْتَفَعُ بِهِ، أَوْ وَلَدٍ صَالِحٍ يَدْعُو لَهُ»
         </blockquote>
         <div className="text-xs font-bold text-stone-500 dark:text-stone-400 font-arabic">
-          [{t('verseSurahName')} : {t('verseAyahNumber')}]
+          عن أبي هريرة رضي الله عنه
         </div>
         {!isAr && (
-          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 font-sans italic border-t border-amber-200/50 dark:border-stone-800 pt-4 max-w-2xl mx-auto">
-            "{t('verseTranslationText')}"
+          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 font-sans italic border-t border-stone-200/50 dark:border-stone-800 pt-4 max-w-2xl mx-auto">
+            When a person dies, their deeds come to an end except for three: ongoing charity, knowledge that benefits others, or a righteous child who prays for them.
           </p>
         )}
+        <p className="text-sm text-stone-600 dark:text-stone-400 font-arabic">
+          {t('hadithLinkIdea')}
+        </p>
       </section>
 
       {/* 3. "WHAT IS THIS" AND "OUR AIM" */}

@@ -6,16 +6,18 @@ import Dashboard from './components/Dashboard';
 import QuranReader from './components/QuranReader';
 import Footer from './components/Footer';
 import CreateKhitmah from './components/CreateKhitmah';
-import CommunityDashboard from './components/CommunityDashboard';
+import LandingPage from './components/LandingPage';
 import { manageStorageKey } from './utils/manageToken';
 import { getOrCreateDeviceId } from './utils/deviceId';
+import { getLocalizedPersonName } from './utils/personName';
 import confetti from 'canvas-confetti';
-import { Sparkles, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 function parsePath(pathname) {
   const path = (pathname || '/').replace(/\/+$/, '') || '/';
   if (path === '/new') return { name: 'new' };
-  if (path === '/community') return { name: 'community' };
+  if (path === '/general') return { name: 'general' };
+  if (path === '/community') return { name: 'home' }; // redirect /community to /
   const match = path.match(/^\/k\/([^/]+)$/);
   if (match) return { name: 'custom', slug: match[1] };
   return { name: 'home' };
@@ -45,25 +47,25 @@ function setRobotsNoindex(enabled) {
   }
 }
 
-function AppShell({ children, isWsConnected, onGoHome, onGoCommunity, globalCompleted }) {
+function AppShell({ children, isWsConnected, onGoHome, onGoGeneral, globalCompleted, khitmahData }) {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans transition-colors duration-200">
       <Navbar 
         isWsConnected={isWsConnected} 
         onGoHome={onGoHome} 
-        onGoCommunity={onGoCommunity}
+        onGoGeneral={onGoGeneral}
         globalCompleted={globalCompleted}
       />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
-      <Footer />
+      <Footer khitmahData={khitmahData} />
     </div>
   );
 }
 
 function KhitmahApp({ route, navigate, globalCompleted }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isCustom = route.name === 'custom';
   const apiBase = isCustom ? `/api/k/${route.slug}` : '/api/juz';
   const currentSlug = isCustom ? route.slug : null;
@@ -79,9 +81,11 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
     totalJuz: 30
   });
   const [personName, setPersonName] = useState('');
+  const [personNameAr, setPersonNameAr] = useState('');
+  const [personNameEn, setPersonNameEn] = useState('');
   const [dedication, setDedication] = useState('');
   const [notFound, setNotFound] = useState(false);
-  const [boardLoading, setBoardLoading] = useState(isCustom);
+  const [boardLoading, setBoardLoading] = useState(true);
 
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [isWsConnected, setIsWsConnected] = useState(false);
@@ -93,13 +97,25 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
   const wsRef = useRef(null);
   const manageToken = isCustom ? getManageToken(route.slug) : null;
 
+  // Language-aware document title
+  useEffect(() => {
+    const localizedName = getLocalizedPersonName({ personName, personNameAr, personNameEn }, i18n.language);
+    if (isCustom && localizedName) {
+      document.title = `${t('appName')} | ${localizedName}`;
+    } else {
+      document.title = `${t('appName')} | ${t('brandSubtitle')}`;
+    }
+  }, [isCustom, personName, personNameAr, personNameEn, i18n.language, t]);
+
   useEffect(() => {
     setActiveView('dashboard');
     setSelectedJuz(null);
     setNotFound(false);
     setPersonName('');
+    setPersonNameAr('');
+    setPersonNameEn('');
     setDedication('');
-    setBoardLoading(isCustom);
+    setBoardLoading(true);
   }, [apiBase, isCustom]);
 
   useEffect(() => {
@@ -135,6 +151,8 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
         }
         if (isCustom) {
           setPersonName(data.personName || '');
+          setPersonNameAr(data.personNameAr || '');
+          setPersonNameEn(data.personNameEn || '');
           setDedication(data.dedication || '');
         }
         setSelectedJuz(prev => {
@@ -307,31 +325,26 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
     }
   };
 
-  const goHome = () => {
-    if (route.name !== 'home') {
-      navigate('/');
-    } else {
-      setActiveView('dashboard');
-    }
-  };
+  const khitmahData = isCustom ? { personName, personNameAr, personNameEn, dedication } : null;
 
   return (
     <AppShell 
       isWsConnected={isWsConnected} 
-      onGoHome={goHome}
-      onGoCommunity={() => navigate('/community')}
+      onGoHome={() => navigate('/')}
+      onGoGeneral={() => navigate('/general')}
       globalCompleted={globalCompleted}
+      khitmahData={khitmahData}
     >
       {toastMessage && (
-        <div className="fixed top-20 start-1/2 -translate-x-1/2 z-50 animate-bounce-short">
-          <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs font-bold border backdrop-blur-md max-w-md ${
+        <div className="fixed top-20 start-1/2 -translate-x-1/2 z-50">
+          <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold border ${
             toastMessage.type === 'error'
-              ? 'bg-rose-50/95 dark:bg-rose-950/95 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800'
+              ? 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-800'
               : toastMessage.type === 'warning'
-              ? 'bg-amber-50/95 dark:bg-amber-950/95 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700'
+              ? 'bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-700'
               : toastMessage.type === 'success'
-              ? 'bg-emerald-50/95 dark:bg-emerald-950/95 text-emerald-900 dark:text-emerald-100 border-emerald-300 dark:border-emerald-800'
-              : 'bg-stone-900/95 text-white border-stone-700'
+              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-100 border-emerald-300 dark:border-emerald-800'
+              : 'bg-stone-900 text-white border-stone-700'
           }`}>
             {toastMessage.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />}
             {toastMessage.type === 'warning' && <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />}
@@ -345,13 +358,9 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
       )}
 
       {khitmahCelebration && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-lg w-full bg-white dark:bg-stone-900 rounded-3xl p-8 text-center border-2 border-gold-400 dark:border-gold-600 shadow-2xl space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-gold-500 to-amber-300 text-stone-900 flex items-center justify-center mx-auto shadow-lg shadow-gold-500/30">
-              <Sparkles className="w-9 h-9" />
-            </div>
-
-            <h2 className="text-2xl font-bold font-arabic text-khitmah-900 dark:text-khitmah-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="max-w-lg w-full bg-white dark:bg-stone-900 rounded-2xl p-8 text-center border border-amber-300 dark:border-stone-700 space-y-4">
+            <h2 className="text-2xl font-bold font-arabic text-stone-900 dark:text-stone-100">
               {t('khitmahCompletedAlertTitle')}
             </h2>
 
@@ -364,7 +373,7 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
                 setKhitmahCelebration(false);
                 setActiveView('dashboard');
               }}
-              className="mt-4 px-8 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-khitmah-700 to-khitmah-900 hover:from-khitmah-800 hover:to-black shadow-md transition-all"
+              className="mt-4 px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-emerald-800 hover:bg-emerald-900 transition-colors"
             >
               {t('navHome')}
             </button>
@@ -373,8 +382,8 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-2xl border border-stone-200 dark:border-stone-800 p-6 text-center space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 text-center space-y-4">
             <h3 className="text-lg font-bold text-stone-900 dark:text-white font-arabic">
               {t('deleteConfirmTitle')}
             </h3>
@@ -385,14 +394,14 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleteLoading}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               >
                 {t('cancelBtn')}
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 shadow-md disabled:opacity-60"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 disabled:opacity-60 transition-colors"
               >
                 {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{t('deleteConfirmBtn')}</span>
@@ -403,8 +412,8 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
       )}
 
       {notFound ? (
-        <div className="max-w-md mx-auto my-12 p-8 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-center space-y-4">
-          <h1 className="text-xl font-extrabold font-arabic text-khitmah-900 dark:text-khitmah-100">
+        <div className="max-w-md mx-auto my-12 p-8 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-center space-y-4">
+          <h1 className="text-xl font-bold font-arabic text-stone-900 dark:text-stone-100">
             {t('notFoundTitle')}
           </h1>
           <p className="text-sm text-stone-600 dark:text-stone-400 font-arabic leading-relaxed">
@@ -413,14 +422,14 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-khitmah-700 hover:bg-khitmah-800"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 transition-colors"
           >
             {t('goHome')}
           </button>
         </div>
       ) : boardLoading ? (
         <div className="min-h-[40vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-khitmah-600 animate-spin" />
+          <Loader2 className="w-8 h-8 text-stone-400 animate-spin" />
         </div>
       ) : activeView === 'dashboard' ? (
         <Dashboard
@@ -429,6 +438,8 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
           cooldownRemaining={cooldownRemaining}
           apiBase={apiBase}
           personName={isCustom ? personName : undefined}
+          personNameAr={isCustom ? personNameAr : undefined}
+          personNameEn={isCustom ? personNameEn : undefined}
           dedication={isCustom ? dedication : undefined}
           showCreateButton={!isCustom}
           onCreateClick={() => navigate('/new')}
@@ -445,6 +456,8 @@ function KhitmahApp({ route, navigate, globalCompleted }) {
           cooldownRemaining={cooldownRemaining}
           apiBase={apiBase}
           personName={isCustom ? personName : undefined}
+          personNameAr={isCustom ? personNameAr : undefined}
+          personNameEn={isCustom ? personNameEn : undefined}
           dedication={isCustom ? dedication : undefined}
           onBack={() => setActiveView('dashboard')}
           onReadJuz={handleReadJuz}
@@ -459,28 +472,12 @@ function CreatePage({ navigate, globalCompleted }) {
     <AppShell 
       isWsConnected={false} 
       onGoHome={() => navigate('/')}
-      onGoCommunity={() => navigate('/community')}
+      onGoGeneral={() => navigate('/general')}
       globalCompleted={globalCompleted}
     >
       <CreateKhitmah
         onGoHome={() => navigate('/')}
         onGoToKhitmah={(slug) => navigate(`/k/${slug}`)}
-      />
-    </AppShell>
-  );
-}
-
-function CommunityPage({ navigate, globalCompleted }) {
-  return (
-    <AppShell
-      isWsConnected={true}
-      onGoHome={() => navigate('/')}
-      onGoCommunity={() => navigate('/community')}
-      globalCompleted={globalCompleted}
-    >
-      <CommunityDashboard
-        onGoHome={() => navigate('/')}
-        onCreateClick={() => navigate('/new')}
       />
     </AppShell>
   );
@@ -507,19 +504,26 @@ export default function App() {
   }, [fetchGlobalStats]);
 
   useEffect(() => {
-    const onPop = () => setRoute(parsePath(window.location.pathname));
+    const onPop = () => {
+      const parsed = parsePath(window.location.pathname);
+      setRoute(parsed);
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   useEffect(() => {
-    setRobotsNoindex(route.name === 'custom' || route.name === 'new' || route.name === 'community');
+    setRobotsNoindex(route.name === 'custom' || route.name === 'new');
   }, [route]);
 
   const navigate = (to) => {
     const path = to.split('?')[0];
-    window.history.pushState({}, '', to);
-    setRoute(parsePath(path));
+    let nextPath = path;
+    if (path === '/community') {
+      nextPath = '/';
+    }
+    window.history.pushState({}, '', nextPath);
+    setRoute(parsePath(nextPath));
   };
 
   const globalCompletedCount = globalStats?.globalCompleted;
@@ -528,11 +532,18 @@ export default function App() {
     <ThemeProvider>
       {route.name === 'new' ? (
         <CreatePage navigate={navigate} globalCompleted={globalCompletedCount} />
-      ) : route.name === 'community' ? (
-        <CommunityPage navigate={navigate} globalCompleted={globalCompletedCount} />
+      ) : route.name === 'home' ? (
+        <AppShell
+          isWsConnected={true}
+          onGoHome={() => navigate('/')}
+          onGoGeneral={() => navigate('/general')}
+          globalCompleted={globalCompletedCount}
+        >
+          <LandingPage navigate={navigate} />
+        </AppShell>
       ) : (
         <KhitmahApp 
-          key={route.name === 'custom' ? route.slug : 'home'} 
+          key={route.name === 'custom' ? route.slug : 'general'} 
           route={route} 
           navigate={navigate} 
           globalCompleted={globalCompletedCount}

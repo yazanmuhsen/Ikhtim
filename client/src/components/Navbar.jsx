@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 import { Moon, Sun, Globe } from 'lucide-react';
 
-export default function Navbar({ isWsConnected, onGoHome, onGoCommunity, globalCompleted }) {
+export default function Navbar({ isWsConnected, onGoHome, onGoGeneral, globalCompleted }) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
 
@@ -27,15 +27,15 @@ export default function Navbar({ isWsConnected, onGoHome, onGoCommunity, globalC
           onClick={onGoHome}
           className="flex items-center gap-3 group text-start focus:outline-none"
         >
-          <div className="w-11 h-11 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center p-1 shadow-sm group-hover:scale-105 transition-transform">
-            <Logo className="w-9 h-9" />
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center p-1 group-hover:scale-105 transition-transform">
+            <Logo className="w-8 h-8" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-xl tracking-tight text-khitmah-900 dark:text-khitmah-100 font-arabic">
+              <span className="font-bold text-xl tracking-tight text-stone-900 dark:text-stone-100 font-arabic">
                 {t('appName')}
               </span>
-              <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-gold-100 text-gold-800 dark:bg-gold-950/70 dark:text-gold-300 border border-gold-300/40">
+              <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-stone-800 dark:text-amber-200 border border-amber-200/60 dark:border-stone-700">
                 {t('brandSubtitle')}
               </span>
             </div>
@@ -48,20 +48,31 @@ export default function Navbar({ isWsConnected, onGoHome, onGoCommunity, globalC
         {/* Right Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Community Link & Badge */}
-          <button
-            type="button"
-            onClick={onGoCommunity}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors shadow-sm"
-            title={t('communityTitle')}
-          >
-            <span>{t('navCommunity')}</span>
-            {typeof globalCompleted === 'number' && (
-              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold font-arabic">
+          {/* General Khitmah navigation link */}
+          {onGoGeneral && (
+            <button
+              type="button"
+              onClick={onGoGeneral}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors font-arabic"
+            >
+              {t('navGeneral')}
+            </button>
+          )}
+
+          {/* Global Counter Badge linking to home / */}
+          {typeof globalCompleted === 'number' && (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+              title={t('landingCounterCenterpiece')}
+            >
+              <span className="hidden sm:inline font-arabic">{t('communityBadge')}</span>
+              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold font-arabic">
                 {formatBadgeNumber(globalCompleted)}
               </span>
-            )}
-          </button>
+            </button>
+          )}
           
           {/* Live WS Status */}
           <div 

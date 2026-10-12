@@ -400,17 +400,18 @@ async function runTests() {
 
     const spaNew = await makeRequest('GET', '/new');
     const spaCustom = await makeRequest('GET', '/k/x');
+    const spaGeneral = await makeRequest('GET', '/general');
     const spaLooksLikeIndex = (res) =>
       res.status === 200 &&
       typeof res.raw === 'string' &&
       res.raw.includes('<div id="root">') &&
-      /index\.html|root|Khitmah|خَتْمَة/i.test(res.raw);
+      /index\.html|root|Khitmah|خَتْمَة|Ikhtim|اختم/i.test(res.raw);
 
-    if (spaLooksLikeIndex(spaNew) && spaLooksLikeIndex(spaCustom)) {
-      console.log('✅ 21. SPA fallback returns index.html for /new and /k/x');
+    if (spaLooksLikeIndex(spaNew) && spaLooksLikeIndex(spaCustom) && spaLooksLikeIndex(spaGeneral)) {
+      console.log('✅ 21. SPA fallback returns index.html for /new, /general and /k/x');
     } else {
       throw new Error(
-        `SPA fallback missing index.html (GET /new status=${spaNew.status}, GET /k/x status=${spaCustom.status}). Build the client first.`
+        `SPA fallback missing index.html (GET /new status=${spaNew.status}, GET /general status=${spaGeneral.status}, GET /k/x status=${spaCustom.status}). Build the client first.`
       );
     }
 

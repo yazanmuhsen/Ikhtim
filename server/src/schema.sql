@@ -43,3 +43,17 @@ CREATE TABLE IF NOT EXISTS khitmah_counters (
   khitmah_id INT PRIMARY KEY,
   total_completed INT NOT NULL DEFAULT 0
 );
+
+-- Global community stats
+CREATE TABLE IF NOT EXISTS global_stats (
+  id INTEGER PRIMARY KEY,
+  custom_completed INTEGER NOT NULL DEFAULT 0,
+  khitmahs_created INTEGER NOT NULL DEFAULT 0
+);
+
+-- Ensure a single row exists (id=1) and seed values if missing
+INSERT INTO global_stats (id, custom_completed, khitmahs_created)
+SELECT 1,
+       COALESCE((SELECT SUM(total_completed) FROM khitmah_counters),0),
+       COALESCE((SELECT COUNT(*) FROM khitmahs),0)
+ON CONFLICT (id) DO NOTHING;

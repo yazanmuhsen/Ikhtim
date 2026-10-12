@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Logo({ className = "w-10 h-10", alt = "Khitmah Logo" }) {
+export default function Logo({ className = "w-10 h-10", alt = "Ikhtim Logo" }) {
   return (
     <img 
       src="/logo.svg" 

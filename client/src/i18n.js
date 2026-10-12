@@ -4,13 +4,14 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   ar: {
     translation: {
-      appName: 'خَتْمَة',
+      appName: 'اختم',
       tagline: 'معاً نختم كتاب الله',
       brandSubtitle: 'مشروع الختمة الجماعية للقرآن الكريم',
       
       // Navigation
       navHome: 'الرئيسية',
       navCommunity: 'المجتمع',
+      navGeneral: 'الختمة العامة',
 
       // Community Dashboard & Stats
       communityTitle: 'ختمات المجتمع المباركة',
@@ -18,7 +19,7 @@ const resources = {
       communityMain: 'الختمة العامة',
       communityCustom: 'ختمات الإهداء',
       communityCreated: 'صفحات أُنشئت',
-      communityNote: '🔒 صفحات الختمات خاصة ولا يمكن الوصول إليها إلا عبر الرابط المباشر فقط.',
+      communityNote: 'صفحات الختمات خاصة ولا يمكن الوصول إليها إلا عبر الرابط المباشر فقط.',
       communityBadge: 'إنجاز المجتمع',
       loadingStats: 'جاري تحميل الإحصائيات...',
       errorStats: 'تعذر تحميل الإحصائيات',
@@ -114,13 +115,14 @@ const resources = {
   },
   en: {
     translation: {
-      appName: 'KHITMAH',
+      appName: 'Ikhtim',
       tagline: 'Together We Complete the Quran',
       brandSubtitle: 'Collaborative Community Quran Completion',
 
       // Navigation
       navHome: 'Home',
       navCommunity: 'Community',
+      navGeneral: 'Shared Khitmah',
 
       // Community Dashboard & Stats
       communityTitle: 'Community Khitmahs',
@@ -128,7 +130,7 @@ const resources = {
       communityMain: 'Main Board',
       communityCustom: 'Memorial Pages',
       communityCreated: 'Pages Created',
-      communityNote: '🔒 Memorial pages are private and shared only by direct link.',
+      communityNote: 'Memorial pages are private and shared only by direct link.',
       communityBadge: 'Community Impact',
       loadingStats: 'Loading statistics...',
       errorStats: 'Failed to load community statistics',

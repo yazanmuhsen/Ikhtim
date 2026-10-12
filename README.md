@@ -1,7 +1,7 @@
-# Khitmah (خَتْمَة) 📖✨
+# Ikhtim (اختم)
 ### Collaborative Community Quran Completion Platform | مشروع الختمة الجماعية للقرآن الكريم
 
-**Khitmah** is a lightweight, responsive full-stack web application designed for communities to collaboratively recite and complete the Holy Quran together without sign-ups or accounts.
+**Ikhtim** is a lightweight, responsive full-stack web application designed for communities to collaboratively recite and complete the Holy Quran together without sign-ups or accounts.
 
 Anyone can browse all 30 Juz', open any available Juz', recite its exact Quranic text in authentic Uthmani script (strictly mapped to standard 604-page Madani Mushaf page boundaries), and press "Read" ("قرأت") to mark it complete for the community. Once all 30 Juz' are completed, the system atomically completes the Khitmah, increments the community counter, and resets the board for the next Khitmah.
 

@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import QuranReader from './components/QuranReader';
 import Footer from './components/Footer';
 import CreateKhitmah from './components/CreateKhitmah';
+import CommunityDashboard from './components/CommunityDashboard';
 import { manageStorageKey } from './utils/manageToken';
 import { getOrCreateDeviceId } from './utils/deviceId';
 import confetti from 'canvas-confetti';
@@ -14,6 +15,7 @@ import { Sparkles, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 function parsePath(pathname) {
   const path = (pathname || '/').replace(/\/+$/, '') || '/';
   if (path === '/new') return { name: 'new' };
+  if (path === '/community') return { name: 'community' };
   const match = path.match(/^\/k\/([^/]+)$/);
   if (match) return { name: 'custom', slug: match[1] };
   return { name: 'home' };
@@ -43,10 +45,15 @@ function setRobotsNoindex(enabled) {
   }
 }
 
-function AppShell({ children, isWsConnected, onGoHome }) {
+function AppShell({ children, isWsConnected, onGoHome, onGoCommunity, globalCompleted }) {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans transition-colors duration-200">
-      <Navbar isWsConnected={isWsConnected} onGoHome={onGoHome} />
+      <Navbar 
+        isWsConnected={isWsConnected} 
+        onGoHome={onGoHome} 
+        onGoCommunity={onGoCommunity}
+        globalCompleted={globalCompleted}
+      />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
@@ -55,7 +62,7 @@ function AppShell({ children, isWsConnected, onGoHome }) {
   );
 }
 
-function KhitmahApp({ route, navigate }) {
+function KhitmahApp({ route, navigate, globalCompleted }) {
   const { t } = useTranslation();
   const isCustom = route.name === 'custom';
   const apiBase = isCustom ? `/api/k/${route.slug}` : '/api/juz';
@@ -309,7 +316,12 @@ function KhitmahApp({ route, navigate }) {
   };
 
   return (
-    <AppShell isWsConnected={isWsConnected} onGoHome={goHome}>
+    <AppShell 
+      isWsConnected={isWsConnected} 
+      onGoHome={goHome}
+      onGoCommunity={() => navigate('/community')}
+      globalCompleted={globalCompleted}
+    >
       {toastMessage && (
         <div className="fixed top-20 start-1/2 -translate-x-1/2 z-50 animate-bounce-short">
           <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs font-bold border backdrop-blur-md max-w-md ${
@@ -442,9 +454,14 @@ function KhitmahApp({ route, navigate }) {
   );
 }
 
-function CreatePage({ navigate }) {
+function CreatePage({ navigate, globalCompleted }) {
   return (
-    <AppShell isWsConnected={false} onGoHome={() => navigate('/')}>
+    <AppShell 
+      isWsConnected={false} 
+      onGoHome={() => navigate('/')}
+      onGoCommunity={() => navigate('/community')}
+      globalCompleted={globalCompleted}
+    >
       <CreateKhitmah
         onGoHome={() => navigate('/')}
         onGoToKhitmah={(slug) => navigate(`/k/${slug}`)}
@@ -453,8 +470,41 @@ function CreatePage({ navigate }) {
   );
 }
 
+function CommunityPage({ navigate, globalCompleted }) {
+  return (
+    <AppShell
+      isWsConnected={true}
+      onGoHome={() => navigate('/')}
+      onGoCommunity={() => navigate('/community')}
+      globalCompleted={globalCompleted}
+    >
+      <CommunityDashboard
+        onGoHome={() => navigate('/')}
+        onCreateClick={() => navigate('/new')}
+      />
+    </AppShell>
+  );
+}
+
 export default function App() {
   const [route, setRoute] = useState(() => parsePath(window.location.pathname));
+  const [globalStats, setGlobalStats] = useState(null);
+
+  const fetchGlobalStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setGlobalStats(data);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchGlobalStats();
+    const interval = setInterval(fetchGlobalStats, 10000);
+    return () => clearInterval(interval);
+  }, [fetchGlobalStats]);
 
   useEffect(() => {
     const onPop = () => setRoute(parsePath(window.location.pathname));
@@ -463,7 +513,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    setRobotsNoindex(route.name === 'custom' || route.name === 'new');
+    setRobotsNoindex(route.name === 'custom' || route.name === 'new' || route.name === 'community');
   }, [route]);
 
   const navigate = (to) => {
@@ -472,12 +522,21 @@ export default function App() {
     setRoute(parsePath(path));
   };
 
+  const globalCompletedCount = globalStats?.globalCompleted;
+
   return (
     <ThemeProvider>
       {route.name === 'new' ? (
-        <CreatePage navigate={navigate} />
+        <CreatePage navigate={navigate} globalCompleted={globalCompletedCount} />
+      ) : route.name === 'community' ? (
+        <CommunityPage navigate={navigate} globalCompleted={globalCompletedCount} />
       ) : (
-        <KhitmahApp key={route.name === 'custom' ? route.slug : 'home'} route={route} navigate={navigate} />
+        <KhitmahApp 
+          key={route.name === 'custom' ? route.slug : 'home'} 
+          route={route} 
+          navigate={navigate} 
+          globalCompleted={globalCompletedCount}
+        />
       )}
     </ThemeProvider>
   );

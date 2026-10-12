@@ -4,13 +4,18 @@ import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 import { Moon, Sun, Globe } from 'lucide-react';
 
-export default function Navbar({ isWsConnected, onGoHome }) {
+export default function Navbar({ isWsConnected, onGoHome, onGoCommunity, globalCompleted }) {
   const { t, i18n } = useTranslation();
   const { theme, toggleTheme } = useTheme();
 
   const toggleLanguage = () => {
     const nextLang = i18n.language === 'ar' ? 'en' : 'ar';
     i18n.changeLanguage(nextLang);
+  };
+
+  const formatBadgeNumber = (n) => {
+    if (typeof n !== 'number') return null;
+    return i18n.language === 'ar' ? n.toLocaleString('ar-EG') : n.toLocaleString('en-US');
   };
 
   return (
@@ -42,6 +47,21 @@ export default function Navbar({ isWsConnected, onGoHome }) {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          
+          {/* Community Link & Badge */}
+          <button
+            type="button"
+            onClick={onGoCommunity}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors shadow-sm"
+            title={t('communityTitle')}
+          >
+            <span>{t('navCommunity')}</span>
+            {typeof globalCompleted === 'number' && (
+              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold font-arabic">
+                {formatBadgeNumber(globalCompleted)}
+              </span>
+            )}
+          </button>
           
           {/* Live WS Status */}
           <div 

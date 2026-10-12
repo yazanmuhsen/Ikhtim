@@ -14,11 +14,6 @@ const { router: juzRoutes } = require('./routes/juz');
 const { router: khitmahRoutes } = require('./routes/khitmahs');
 const { router: statsRouter } = require('./routes/stats');
 
-// existing routes
-app.use('/api/juz', juzRoutes);
-app.use('/api/k', khitmahRoutes);
-app.use('/api/stats', statsRouter); // new stats endpoint
-
 const app = express();
 const server = http.createServer(app);
 
@@ -47,6 +42,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/juz', juzRoutes);
 app.use('/api/k', khitmahRoutes);
+app.use('/api/stats', statsRouter);
 
 // Serve static frontend build if present
 const clientDist = path.join(__dirname, '../../client/dist');

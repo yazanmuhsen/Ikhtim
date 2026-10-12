@@ -10,6 +10,18 @@ const resources = {
       
       // Navigation
       navHome: 'الرئيسية',
+      navCommunity: 'المجتمع',
+
+      // Community Dashboard & Stats
+      communityTitle: 'ختمات المجتمع المباركة',
+      communityGlobal: 'ختمة أنجزت معاً بحمد الله',
+      communityMain: 'الختمة العامة',
+      communityCustom: 'ختمات الإهداء',
+      communityCreated: 'صفحات أُنشئت',
+      communityNote: '🔒 صفحات الختمات خاصة ولا يمكن الوصول إليها إلا عبر الرابط المباشر فقط.',
+      communityBadge: 'إنجاز المجتمع',
+      loadingStats: 'جاري تحميل الإحصائيات...',
+      errorStats: 'تعذر تحميل الإحصائيات',
 
       // Dashboard Header
       statsKhitmahsCompleted: 'الختمات المكتملة',
@@ -108,6 +120,18 @@ const resources = {
 
       // Navigation
       navHome: 'Home',
+      navCommunity: 'Community',
+
+      // Community Dashboard & Stats
+      communityTitle: 'Community Khitmahs',
+      communityGlobal: 'Khitmahs Completed Together',
+      communityMain: 'Main Board',
+      communityCustom: 'Memorial Pages',
+      communityCreated: 'Pages Created',
+      communityNote: '🔒 Memorial pages are private and shared only by direct link.',
+      communityBadge: 'Community Impact',
+      loadingStats: 'Loading statistics...',
+      errorStats: 'Failed to load community statistics',
 
       // Dashboard Header
       statsKhitmahsCompleted: 'Completed Khitmahs',

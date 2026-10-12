@@ -57,3 +57,9 @@ SELECT 1,
        COALESCE((SELECT SUM(total_completed) FROM khitmah_counters),0),
        COALESCE((SELECT COUNT(*) FROM khitmahs),0)
 ON CONFLICT (id) DO NOTHING;
+
+-- Bilingual names for custom khitmahs
+ALTER TABLE khitmahs ADD COLUMN IF NOT EXISTS person_name_ar TEXT;
+ALTER TABLE khitmahs ADD COLUMN IF NOT EXISTS person_name_en TEXT;
+UPDATE khitmahs SET person_name_ar = person_name WHERE person_name_ar IS NULL OR person_name_ar = '';
+UPDATE khitmahs SET person_name_en = person_name WHERE person_name_en IS NULL OR person_name_en = '';

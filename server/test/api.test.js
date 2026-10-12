@@ -511,9 +511,62 @@ async function runTests() {
     assert.strictEqual(statsAfterDelete.data.customCompleted, prevCustomCompleted + 3);
     assert.strictEqual(statsAfterDelete.data.globalCompleted, prevGlobal + 3);
     assert.ok(statsAfterDelete.data.khitmahsCreated >= prevCreated + 3);
-    console.log('✅ 27. Deleting khitmah page does NOT decrease globalCompleted or khitmahsCreated');
+    // --- BILINGUAL NAMES TESTS ---
+    // 28. Creating with both personNameAr and personNameEn succeeds and returns both
+    const biCreate = await makeRequest(
+      'POST',
+      '/api/k',
+      { personNameAr: 'محمد علي', personNameEn: 'Muhammad Ali', dedication: 'دعاء له' },
+      'bi-device-1',
+      '198.51.100.201'
+    );
+    assert.strictEqual(biCreate.status, 201);
+    assert.ok(biCreate.data.slug);
+    assert.ok(biCreate.data.manageToken);
 
-    console.log('\n🌟 ALL TESTS PASSED SUCCESSFULLY! 🌟\n');
+    const biBoard = await makeRequest('GET', `/api/k/${biCreate.data.slug}`);
+    assert.strictEqual(biBoard.status, 200);
+    assert.strictEqual(biBoard.data.personNameAr, 'محمد علي');
+    assert.strictEqual(biBoard.data.personNameEn, 'Muhammad Ali');
+    assert.strictEqual(biBoard.data.personName, 'محمد علي');
+    assertNoLeakedFields(biBoard.data);
+    console.log('✅ 28. Creating khitmah with both Arabic and English names succeeds and returns both without leaking private fields');
+
+    // 29. Missing one name when personName is not provided returns 400
+    const missingEn = await makeRequest(
+      'POST',
+      '/api/k',
+      { personNameAr: 'محمد علي', personNameEn: '' },
+      'bi-device-2',
+      '198.51.100.202'
+    );
+    assert.strictEqual(missingEn.status, 400);
+
+    const missingAr = await makeRequest(
+      'POST',
+      '/api/k',
+      { personNameAr: '', personNameEn: 'Muhammad Ali' },
+      'bi-device-3',
+      '198.51.100.203'
+    );
+    assert.strictEqual(missingAr.status, 400);
+    console.log('✅ 29. Missing one bilingual name when personName is not provided returns 400');
+
+    // 30. Old-style personName fallback fills both personNameAr and personNameEn
+    const legacyCreate = await makeRequest(
+      'POST',
+      '/api/k',
+      { personName: 'Legacy Name Only' },
+      'bi-device-4',
+      '198.51.100.204'
+    );
+    assert.strictEqual(legacyCreate.status, 201);
+    const legacyBoard = await makeRequest('GET', `/api/k/${legacyCreate.data.slug}`);
+    assert.strictEqual(legacyBoard.status, 200);
+    assert.strictEqual(legacyBoard.data.personNameAr, 'Legacy Name Only');
+    assert.strictEqual(legacyBoard.data.personNameEn, 'Legacy Name Only');
+    assert.strictEqual(legacyBoard.data.personName, 'Legacy Name Only');
+    console.log('✅ 30. Old-style personName fallback fills both bilingual columns');
   } catch (err) {
     console.error('❌ Test failed:', err);
     await cleanup();

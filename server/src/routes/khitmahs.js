@@ -115,15 +115,24 @@ router.post('/', async (req, res) => {
 
     const { deviceId, ip } = getClientIdentifier(req);
 
-    // Validate input
-    let personName = sanitizePlainText(req.body.personName || '');
-    let dedication = sanitizePlainText(req.body.dedication || '');
+    // Validate input: support bilingual names personNameAr & personNameEn with personName fallback
+    let personNameAr = sanitizePlainText(req.body.personNameAr || '');
+    let personNameEn = sanitizePlainText(req.body.personNameEn || '');
+    let legacyPersonName = sanitizePlainText(req.body.personName || '');
 
-    if (personName.length < 1 || personName.length > 80) {
+    if (!personNameAr && !personNameEn && legacyPersonName) {
+      personNameAr = legacyPersonName;
+      personNameEn = legacyPersonName;
+    }
+
+    if (personNameAr.length < 1 || personNameAr.length > 80 || personNameEn.length < 1 || personNameEn.length > 80) {
       return res.status(400).json({
-        error: 'اسم المتوفى مطلوب (١-٨٠ حرفاً) / Name is required (1-80 characters)'
+        error: 'اسم المتوفى بالعربية والإنجليزية مطلوب (١-٨٠ حرفاً) / Name in both Arabic and English is required (1-80 characters each)'
       });
     }
+
+    const personName = personNameAr || personNameEn;
+    let dedication = sanitizePlainText(req.body.dedication || '');
 
     if (dedication.length > 300) {
       return res.status(400).json({
@@ -180,10 +189,10 @@ router.post('/', async (req, res) => {
     // Create khitmah + 30 juz + counter in a single transaction
     await db.transaction(async (tx) => {
       const insertRes = await tx.query(
-        `INSERT INTO khitmahs (slug, person_name, dedication, manage_token_hash, creator_device_id, creator_ip)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO khitmahs (slug, person_name, person_name_ar, person_name_en, dedication, manage_token_hash, creator_device_id, creator_ip)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [slug, personName, dedication, manageTokenHash, deviceId || null, ip || null]
+        [slug, personName, personNameAr, personNameEn, dedication, manageTokenHash, deviceId || null, ip || null]
       );
       const khitmahId = insertRes.rows[0].id;
       await tx.query(`UPDATE global_stats SET khitmahs_created = khitmahs_created + 1 WHERE id = 1`);
@@ -218,7 +227,7 @@ router.get('/:slug', async (req, res) => {
 
     // Find the khitmah
     const khitmahRes = await db.query(
-      'SELECT id, person_name, dedication FROM khitmahs WHERE slug = $1',
+      'SELECT id, person_name, person_name_ar, person_name_en, dedication FROM khitmahs WHERE slug = $1',
       [slug]
     );
     if (khitmahRes.rows.length === 0) {
@@ -263,6 +272,9 @@ router.get('/:slug', async (req, res) => {
     const completedCount = list.filter(j => j.status === 'completed').length;
     const availableCount = list.filter(j => j.status === 'available').length;
 
+    const personNameAr = khitmah.person_name_ar || khitmah.person_name || khitmah.person_name_en || '';
+    const personNameEn = khitmah.person_name_en || khitmah.person_name || khitmah.person_name_ar || '';
+
     res.json({
       juzList: list,
       counter: {
@@ -273,7 +285,9 @@ router.get('/:slug', async (req, res) => {
       },
       cooldown: cooldownInfo,
       serverTime: new Date().toISOString(),
-      personName: khitmah.person_name,
+      personName: khitmah.person_name || personNameAr || personNameEn,
+      personNameAr,
+      personNameEn,
       dedication: khitmah.dedication || ''
     });
   } catch (err) {
